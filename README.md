@@ -1,0 +1,2 @@
+# acordes
+estudo de acordes
