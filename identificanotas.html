@@ -120,7 +120,7 @@
 </head>
 <body>
 <div class="container">
-  <h1>🎼 Escalas Maiores</h1>
+  <h1>🎼 Escalas Maiores 1</h1>
   <div class="subtitulo">Escolha uma escala, veja as notas (subida e descida) e teste seu ouvido</div>
 
   <div id="escalas"></div>
@@ -316,43 +316,18 @@ function getAudioContext() {
   return audioCtx;
 }
 
-// Cache do impulso de reverb (criado uma vez)
-let reverbImpulse = null;
-function getReverbImpulse(ctx) {
-  if (reverbImpulse) return reverbImpulse;
-  const dur = 1.8;
-  const len = Math.floor(ctx.sampleRate * dur);
-  const buf = ctx.createBuffer(2, len, ctx.sampleRate);
-  for (let ch = 0; ch < 2; ch++) {
-    const data = buf.getChannelData(ch);
-    for (let i = 0; i < len; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
-    }
-  }
-  reverbImpulse = buf;
-  return buf;
-}
-
 function tocarNota(freq, quando, duracao) {
   const ctx = getAudioContext();
   const agora = ctx.currentTime + quando;
 
-  // ---- Cadeia de saída: ganho -> reverb (paralelo) -> destino ----
+  // ---- Ganho mestre ----
   const ganhoMestre = ctx.createGain();
-  const reverb = ctx.createConvolver();
-  reverb.buffer = getReverbImpulse(ctx);
-  const wet = ctx.createGain();
-  wet.gain.value = 0.28;               // quantidade de reverb
-  const dry = ctx.createGain();
-  dry.gain.value = 1.0;
+  ganhoMestre.connect(ctx.destination);
 
-  ganhoMestre.connect(dry); dry.connect(ctx.destination);
-  ganhoMestre.connect(reverb); reverb.connect(wet); wet.connect(ctx.destination);
-
-  // ---- Envelope de órgão: ataque suave, sustain plano, release curto ----
-  const ataque = 0.06;                 // 60 ms de ataque
-  const release = 0.18;                // 180 ms de release
-  const pico = 0.18;
+  // Envelope de órgão: ataque suave, sustain plano, release curto
+  const ataque = 0.06;
+  const release = 0.18;
+  const pico = 0.16;
   const fimSustain = agora + Math.max(duracao - release, ataque);
 
   ganhoMestre.gain.setValueAtTime(0, agora);
@@ -360,55 +335,37 @@ function tocarNota(freq, quando, duracao) {
   ganhoMestre.gain.setValueAtTime(pico, fimSustain);
   ganhoMestre.gain.linearRampToValueAtTime(0.0001, agora + duracao);
 
-  // ---- Harmônicos típicos de órgão (1, 2, 3, 4, 6, 8) ----
+  // ---- Apenas 3 harmônicos (leve, mas com timbre de órgão) ----
   const harmonicos = [
-    { mult: 1, ganho: 1.00 },   // 8'  (fundamental)
-    { mult: 2, ganho: 0.55 },   // 4'
-    { mult: 3, ganho: 0.30 },   // 2 2/3'
-    { mult: 4, ganho: 0.22 },   // 2'
-    { mult: 6, ganho: 0.12 },   // 1 1/3'
-    { mult: 8, ganho: 0.08 },   // 1'
+    { mult: 1, ganho: 1.00 },  // 8'
+    { mult: 2, ganho: 0.45 },  // 4'
+    { mult: 3, ganho: 0.20 },  // 2 2/3'
   ];
-
-  // ---- LFO de vibrato (leve) ----
-  const lfo = ctx.createOscillator();
-  lfo.type = 'sine';
-  lfo.frequency.value = 5.2;           // ~5 Hz
-  const lfoGain = ctx.createGain();
-  lfoGain.gain.value = 1.5;            // ±1.5 Hz de vibrato
-  lfo.connect(lfoGain);
 
   harmonicos.forEach(h => {
     const osc = ctx.createOscillator();
     osc.type = 'sine';
     osc.frequency.setValueAtTime(freq * h.mult, agora);
 
-    // Conecta o vibrato (LFO) na frequência do oscilador
-    lfoGain.connect(osc.frequency);
-
     const g = ctx.createGain();
     g.gain.setValueAtTime(h.ganho, agora);
     osc.connect(g); g.connect(ganhoMestre);
 
     osc.start(agora);
-    osc.stop(agora + duracao + 0.1);
+    osc.stop(agora + duracao + 0.05);
     fontesAtivas.push(osc);
   });
 
-  lfo.start(agora);
-  lfo.stop(agora + duracao + 0.1);
-  fontesAtivas.push(lfo);
-
-  // ---- Ruído de "chiff" (ataque do ar) bem sutil ----
+  // ---- Chiff sutil (ruído curto) ----
   const ruido = ctx.createBufferSource();
-  const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.03), ctx.sampleRate);
   const dados = buffer.getChannelData(0);
   for (let i = 0; i < dados.length; i++) {
-    dados[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.012));
+    dados[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.008));
   }
   ruido.buffer = buffer;
   const gRuido = ctx.createGain();
-  gRuido.gain.setValueAtTime(0.04, agora);
+  gRuido.gain.setValueAtTime(0.03, agora);
   ruido.connect(gRuido); gRuido.connect(ganhoMestre);
   ruido.start(agora);
   fontesAtivas.push(ruido);
