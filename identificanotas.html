@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Escalas Maiores</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #1e1e2f, #2a2a40);
+    color: #f0f0f0;
+    min-height: 100vh;
+    display: flex; justify-content: center; align-items: flex-start;
+    padding: 30px 15px;
+  }
+  .container {
+    background: #2f2f4a; border-radius: 16px; padding: 30px;
+    max-width: 760px; width: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  h1 { text-align: center; font-size: 1.5rem; margin-bottom: 8px; color: #ffd369; }
+  .subtitulo { text-align: center; font-size: 0.9rem; color: #aaa; margin-bottom: 20px; }
+
+  /* ===== RADIO BUTTONS ===== */
+  #escalas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .escala-opcao {
+    display: flex; align-items: center; gap: 6px;
+    background: #3d3d5c; border: 2px solid transparent; border-radius: 10px;
+    padding: 10px 12px; cursor: pointer; font-size: 0.95rem;
+    transition: all 0.2s; user-select: none;
+  }
+  .escala-opcao:hover { background: #4a4a6e; border-color: #ffd369; }
+  .escala-opcao input[type="radio"] { accent-color: #ffd369; cursor: pointer; }
+  .escala-opcao.selecionada { border-color: #ffd369; background: #4a4a6e; }
+
+  /* ===== NOTAS ===== */
+  #painelNotas {
+    background: #25253d; border-radius: 12px; padding: 16px;
+    margin-bottom: 16px; min-height: 80px;
+  }
+  #painelNotas .titulo {
+    font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #7fa8cc; font-weight: bold; margin-bottom: 8px; display: block;
+  }
+  #listaNotas {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .nota-chip {
+    background: #3d3d5c; border-radius: 8px; padding: 6px 10px;
+    font-size: 0.95rem; font-weight: bold; color: #ffd369;
+    font-family: 'Consolas', monospace;
+    border: 1px solid transparent;
+  }
+  .nota-chip.tonica { border-color: #ffd369; }
+  .nota-chip.tonica-alta { border-style: dashed; border-color: #ffd369; opacity: .9; }
+  .nota-chip.descida { color: #a5d6ff; }
+
+  /* ===== NOTA SORTEADA ===== */
+  #painelSorteio {
+    background: #1c2c3d; border-left: 6px solid #42a5f5;
+    border-radius: 10px; padding: 16px; margin-bottom: 16px;
+    display: none;
+  }
+  #painelSorteio.visivel { display: block; }
+  #painelSorteio .titulo {
+    font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #42a5f5; font-weight: bold; margin-bottom: 8px; display: block;
+  }
+  #notaSorteada {
+    font-size: 2rem; font-weight: bold; color: #ffd369;
+    font-family: 'Consolas', monospace; text-align: center;
+    padding: 10px;
+  }
+
+  /* ===== BOTÕES ===== */
+  .botoes {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;
+  }
+  button {
+    flex: 1; min-width: 100px; padding: 14px 12px; border: none;
+    border-radius: 10px; font-size: 1rem; font-weight: bold;
+    cursor: pointer; transition: background 0.2s, transform 0.1s;
+  }
+  button:active { transform: scale(0.98); }
+  #btnTocar { background: #26a69a; color: #fff; }
+  #btnTocar:hover:not(:disabled) { background: #00897b; }
+  #btnTocar:disabled { background: #4a4a5e; color: #888; cursor: not-allowed; }
+  #btnRecalcular { background: #42a5f5; color: #fff; }
+  #btnRecalcular:hover:not(:disabled) { background: #1e88e5; }
+  #btnRecalcular:disabled { background: #4a4a5e; color: #888; cursor: not-allowed; }
+  #btnEncerrar { background: #e53935; color: #fff; }
+  #btnEncerrar:hover { background: #c62828; }
+
+  /* ===== ENCERRADO ===== */
+  #encerrado {
+    display: none; text-align: center; padding: 30px;
+    background: #25253d; border-radius: 12px; margin-top: 20px;
+  }
+  #encerrado.visivel { display: block; }
+  #encerrado h2 { color: #ffd369; margin-bottom: 10px; }
+  #btnReiniciar { background: #42a5f5; color: #fff; max-width: 200px; margin: 16px auto 0; }
+  #btnReiniciar:hover { background: #1e88e5; }
+
+  @media (max-width: 500px) {
+    .container { padding: 20px 16px; }
+    h1 { font-size: 1.2rem; }
+    #escalas { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+    .escala-opcao { padding: 8px 10px; font-size: 0.85rem; }
+    #notaSorteada { font-size: 1.6rem; }
+    button { font-size: 0.9rem; padding: 12px 8px; }
+    .nota-chip { font-size: 0.85rem; padding: 5px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎼 Escalas Maiores</h1>
+  <div class="subtitulo">Escolha uma escala, veja as notas (subida e descida) e teste seu ouvido</div>
+
+  <div id="escalas"></div>
+
+  <div id="painelNotas">
+    <span class="titulo">Notas da escala (subida e descida)</span>
+    <div id="listaNotas"></div>
+  </div>
+
+  <div id="painelSorteio">
+    <span class="titulo">Nota sorteada</span>
+    <div id="notaSorteada">—</div>
+  </div>
+
+  <div class="botoes">
+    <button id="btnTocar">▶ Tocar</button>
+    <button id="btnRecalcular" disabled>🔄 Recalcular</button>
+    <button id="btnEncerrar">✕ Encerrar</button>
+  </div>
+
+  <div id="encerrado">
+    <h2>Sessão encerrada</h2>
+    <p>Obrigado por praticar!</p>
+    <button id="btnReiniciar">🔄 Reiniciar</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 1. VETOR DAS ESCALAS (subida + descida)
+// Cada item: { nota, oitava, dur } — dur: 'S' semínima, 'C' colcheia
+// ============================================================
+const ESCALAS_VETOR = {
+  'C': [
+    { nota:'C', oitava:3, dur:'S' }, { nota:'D', oitava:3, dur:'C' }, { nota:'E', oitava:3, dur:'C' },
+    { nota:'F', oitava:3, dur:'C' }, { nota:'G', oitava:3, dur:'C' }, { nota:'A', oitava:3, dur:'C' },
+    { nota:'B', oitava:3, dur:'C' }, { nota:'C', oitava:4, dur:'S' },
+    { nota:'B', oitava:3, dur:'C' }, { nota:'A', oitava:3, dur:'C' }, { nota:'G', oitava:3, dur:'C' },
+    { nota:'F', oitava:3, dur:'C' }, { nota:'E', oitava:3, dur:'C' }, { nota:'D', oitava:3, dur:'C' },
+    { nota:'C', oitava:3, dur:'S' }
+  ],
+  'F': [
+    { nota:'F', oitava:3, dur:'S' }, { nota:'G', oitava:3, dur:'C' }, { nota:'A', oitava:3, dur:'C' },
+    { nota:'Bb', oitava:3, dur:'C' }, { nota:'C', oitava:4, dur:'C' }, { nota:'D', oitava:4, dur:'C' },
+    { nota:'E', oitava:4, dur:'C' }, { nota:'F', oitava:4, dur:'S' },
+    { nota:'E', oitava:4, dur:'C' }, { nota:'D', oitava:4, dur:'C' }, { nota:'C', oitava:4, dur:'C' },
+    { nota:'Bb', oitava:3, dur:'C' }, { nota:'A', oitava:3, dur:'C' }, { nota:'G', oitava:3, dur:'C' },
+    { nota:'F', oitava:3, dur:'S' }
+  ],
+  'G': [
+    { nota:'G', oitava:2, dur:'S' }, { nota:'A', oitava:2, dur:'C' }, { nota:'B', oitava:2, dur:'C' },
+    { nota:'C', oitava:3, dur:'C' }, { nota:'D', oitava:3, dur:'C' }, { nota:'E', oitava:3, dur:'C' },
+    { nota:'F#', oitava:3, dur:'C' }, { nota:'G', oitava:3, dur:'S' },
+    { nota:'F#', oitava:3, dur:'C' }, { nota:'E', oitava:3, dur:'C' }, { nota:'D', oitava:3, dur:'C' },
+    { nota:'C', oitava:3, dur:'C' }, { nota:'B', oitava:2, dur:'C' }, { nota:'A', oitava:2, dur:'C' },
+    { nota:'G', oitava:2, dur:'S' }
+  ],
+  'Bb': [
+    { nota:'Bb', oitava:2, dur:'S' }, { nota:'C', oitava:3, dur:'C' }, { nota:'D', oitava:3, dur:'C' },
+    { nota:'Eb', oitava:3, dur:'C' }, { nota:'F', oitava:3, dur:'C' }, { nota:'G', oitava:3, dur:'C' },
+    { nota:'A', oitava:3, dur:'C' }, { nota:'Bb', oitava:3, dur:'S' },
+    { nota:'A', oitava:3, dur:'C' }, { nota:'G', oitava:3, dur:'C' }, { nota:'F', oitava:3, dur:'C' },
+    { nota:'Eb', oitava:3, dur:'C' }, { nota:'D', oitava:3, dur:'C' }, { nota:'C', oitava:3, dur:'C' },
+    { nota:'Bb', oitava:2, dur:'S' }
+  ],
+  'D': [
+    { nota:'D', oitava:3, dur:'S' }, { nota:'E', oitava:3, dur:'C' }, { nota:'F#', oitava:3, dur:'C' },
+    { nota:'G', oitava:3, dur:'C' }, { nota:'A', oitava:3, dur:'C' }, { nota:'B', oitava:3, dur:'C' },
+    { nota:'C#', oitava:4, dur:'C' }, { nota:'D', oitava:4, dur:'S' },
+    { nota:'C#', oitava:4, dur:'C' }, { nota:'B', oitava:3, dur:'C' }, { nota:'A', oitava:3, dur:'C' },
+    { nota:'G', oitava:3, dur:'C' }, { nota:'F#', oitava:3, dur:'C' }, { nota:'E', oitava:3, dur:'C' },
+    { nota:'D', oitava:3, dur:'S' }
+  ],
+  'Eb': [
+    { nota:'Eb', oitava:3, dur:'S' }, { nota:'F', oitava:3, dur:'C' }, { nota:'G', oitava:3, dur:'C' },
+    { nota:'Ab', oitava:3, dur:'C' }, { nota:'Bb', oitava:3, dur:'C' }, { nota:'C', oitava:4, dur:'C' },
+    { nota:'D', oitava:4, dur:'C' }, { nota:'Eb', oitava:4, dur:'S' },
+    { nota:'D', oitava:4, dur:'C' }, { nota:'C', oitava:4, dur:'C' }, { nota:'Bb', oitava:3, dur:'C' },
+    { nota:'Ab', oitava:3, dur:'C' }, { nota:'G', oitava:3, dur:'C' }, { nota:'F', oitava:3, dur:'C' },
+    { nota:'Eb', oitava:3, dur:'S' }
+  ],
+  'A': [
+    { nota:'A', oitava:2, dur:'S' }, { nota:'B', oitava:2, dur:'C' }, { nota:'C#', oitava:3, dur:'C' },
+    { nota:'D', oitava:3, dur:'C' }, { nota:'E', oitava:3, dur:'C' }, { nota:'F#', oitava:3, dur:'C' },
+    { nota:'G#', oitava:3, dur:'C' }, { nota:'A', oitava:3, dur:'S' },
+    { nota:'G#', oitava:3, dur:'C' }, { nota:'F#', oitava:3, dur:'C' }, { nota:'E', oitava:3, dur:'C' },
+    { nota:'D', oitava:3, dur:'C' }, { nota:'C#', oitava:3, dur:'C' }, { nota:'B', oitava:2, dur:'C' },
+    { nota:'A', oitava:2, dur:'S' }
+  ],
+  'Ab': [
+    { nota:'Ab', oitava:2, dur:'S' }, { nota:'Bb', oitava:2, dur:'C' }, { nota:'C', oitava:3, dur:'C' },
+    { nota:'Db', oitava:3, dur:'C' }, { nota:'Eb', oitava:3, dur:'C' }, { nota:'F', oitava:3, dur:'C' },
+    { nota:'G', oitava:3, dur:'C' }, { nota:'Ab', oitava:3, dur:'S' },
+    { nota:'G', oitava:3, dur:'C' }, { nota:'F', oitava:3, dur:'C' }, { nota:'Eb', oitava:3, dur:'C' },
+    { nota:'Db', oitava:3, dur:'C' }, { nota:'C', oitava:3, dur:'C' }, { nota:'Bb', oitava:2, dur:'C' },
+    { nota:'Ab', oitava:2, dur:'S' }
+  ],
+  'E': [
+    { nota:'E', oitava:3, dur:'S' }, { nota:'F#', oitava:3, dur:'C' }, { nota:'G#', oitava:3, dur:'C' },
+    { nota:'A', oitava:3, dur:'C' }, { nota:'B', oitava:3, dur:'C' }, { nota:'C#', oitava:4, dur:'C' },
+    { nota:'D#', oitava:4, dur:'C' }, { nota:'E', oitava:4, dur:'S' },
+    { nota:'D#', oitava:4, dur:'C' }, { nota:'C#', oitava:4, dur:'C' }, { nota:'B', oitava:3, dur:'C' },
+    { nota:'A', oitava:3, dur:'C' }, { nota:'G#', oitava:3, dur:'C' }, { nota:'F#', oitava:3, dur:'C' },
+    { nota:'E', oitava:3, dur:'S' }
+  ],
+  'Db': [
+    { nota:'Db', oitava:3, dur:'S' }, { nota:'Eb', oitava:3, dur:'C' }, { nota:'F', oitava:3, dur:'C' },
+    { nota:'Gb', oitava:3, dur:'C' }, { nota:'Ab', oitava:3, dur:'C' }, { nota:'Bb', oitava:3, dur:'C' },
+    { nota:'C', oitava:4, dur:'C' }, { nota:'Db', oitava:4, dur:'S' },
+    { nota:'C', oitava:4, dur:'C' }, { nota:'Bb', oitava:3, dur:'C' }, { nota:'Ab', oitava:3, dur:'C' },
+    { nota:'Gb', oitava:3, dur:'C' }, { nota:'F', oitava:3, dur:'C' }, { nota:'Eb', oitava:3, dur:'C' },
+    { nota:'Db', oitava:3, dur:'S' }
+  ],
+  'B': [
+    { nota:'B', oitava:2, dur:'S' }, { nota:'C#', oitava:3, dur:'C' }, { nota:'D#', oitava:3, dur:'C' },
+    { nota:'E', oitava:3, dur:'C' }, { nota:'F#', oitava:3, dur:'C' }, { nota:'G#', oitava:3, dur:'C' },
+    { nota:'A#', oitava:3, dur:'C' }, { nota:'B', oitava:3, dur:'S' },
+    { nota:'A#', oitava:3, dur:'C' }, { nota:'G#', oitava:3, dur:'C' }, { nota:'F#', oitava:3, dur:'C' },
+    { nota:'E', oitava:3, dur:'C' }, { nota:'D#', oitava:3, dur:'C' }, { nota:'C#', oitava:3, dur:'C' },
+    { nota:'B', oitava:2, dur:'S' }
+  ],
+  'Gb': [
+    { nota:'Gb', oitava:2, dur:'S' }, { nota:'Ab', oitava:2, dur:'C' }, { nota:'Bb', oitava:2, dur:'C' },
+    { nota:'Cb', oitava:3, dur:'C' }, { nota:'Db', oitava:3, dur:'C' }, { nota:'Eb', oitava:3, dur:'C' },
+    { nota:'F', oitava:3, dur:'C' }, { nota:'Gb', oitava:3, dur:'S' },
+    { nota:'F', oitava:3, dur:'C' }, { nota:'Eb', oitava:3, dur:'C' }, { nota:'Db', oitava:3, dur:'C' },
+    { nota:'Cb', oitava:3, dur:'C' }, { nota:'Bb', oitava:2, dur:'C' }, { nota:'Ab', oitava:2, dur:'C' },
+    { nota:'Gb', oitava:2, dur:'S' }
+  ],
+  'F#': [
+    { nota:'F#', oitava:2, dur:'S' }, { nota:'G#', oitava:2, dur:'C' }, { nota:'A#', oitava:2, dur:'C' },
+    { nota:'B', oitava:2, dur:'C' }, { nota:'C#', oitava:3, dur:'C' }, { nota:'D#', oitava:3, dur:'C' },
+    { nota:'E#', oitava:3, dur:'C' }, { nota:'F#', oitava:3, dur:'S' },
+    { nota:'E#', oitava:3, dur:'C' }, { nota:'D#', oitava:3, dur:'C' }, { nota:'C#', oitava:3, dur:'C' },
+    { nota:'B', oitava:2, dur:'C' }, { nota:'A#', oitava:2, dur:'C' }, { nota:'G#', oitava:2, dur:'C' },
+    { nota:'F#', oitava:2, dur:'S' }
+  ],
+  'Cb': [
+    { nota:'Cb', oitava:3, dur:'S' }, { nota:'Db', oitava:3, dur:'C' }, { nota:'Eb', oitava:3, dur:'C' },
+    { nota:'Fb', oitava:3, dur:'C' }, { nota:'Gb', oitava:3, dur:'C' }, { nota:'Ab', oitava:3, dur:'C' },
+    { nota:'Bb', oitava:3, dur:'C' }, { nota:'Cb', oitava:4, dur:'S' },
+    { nota:'Bb', oitava:3, dur:'C' }, { nota:'Ab', oitava:3, dur:'C' }, { nota:'Gb', oitava:3, dur:'C' },
+    { nota:'Fb', oitava:3, dur:'C' }, { nota:'Eb', oitava:3, dur:'C' }, { nota:'Db', oitava:3, dur:'C' },
+    { nota:'Cb', oitava:3, dur:'S' }
+  ],
+  'C#': [
+    { nota:'C#', oitava:3, dur:'S' }, { nota:'D#', oitava:3, dur:'C' }, { nota:'E#', oitava:3, dur:'C' },
+    { nota:'F#', oitava:3, dur:'C' }, { nota:'G#', oitava:3, dur:'C' }, { nota:'A#', oitava:3, dur:'C' },
+    { nota:'B#', oitava:3, dur:'C' }, { nota:'C#', oitava:4, dur:'S' },
+    { nota:'B#', oitava:3, dur:'C' }, { nota:'A#', oitava:3, dur:'C' }, { nota:'G#', oitava:3, dur:'C' },
+    { nota:'F#', oitava:3, dur:'C' }, { nota:'E#', oitava:3, dur:'C' }, { nota:'D#', oitava:3, dur:'C' },
+    { nota:'C#', oitava:3, dur:'S' }
+  ]
+};
+Object.values(ESCALAS_VETOR).forEach(seq => {
+  seq.forEach(item => { item.oitava += 1; });
+});
+// ============================================================
+// 2. NOMES BONITOS
+// ============================================================
+const NOMES_BONITOS = {
+  'C':'Dó', 'F':'Fá', 'G':'Sol', 'Bb':'Si♭', 'D':'Ré', 'Eb':'Mi♭',
+  'A':'Lá', 'Ab':'Lá♭', 'E':'Mi', 'Db':'Ré♭', 'B':'Si', 'Gb':'Sol♭',
+  'F#':'Fá♯', 'Cb':'Dó♭', 'C#':'Dó♯'
+};
+
+// ============================================================
+// 3. CONVERSÃO NOTA -> FREQUÊNCIA
+// ============================================================
+const SEMITONS = { C:0, D:2, E:4, F:5, G:7, A:9, B:11 };
+const ACIDENTE_VAL = { '':0, '#':1, 'b':-1, '##':2, 'bb':-2 };
+const FREQ_C4 = 261.6255653;
+
+function notaParaFrequencia(nota, oitava) {
+  const m = nota.match(/^([A-G])([#b]?)$/);
+  if (!m) throw new Error('Nota inválida: ' + nota);
+  const semitom = SEMITONS[m[1]] + (ACIDENTE_VAL[m[2]] || 0);
+  const semitonsDesdeC4 = (oitava - 4) * 12 + semitom;
+  return FREQ_C4 * Math.pow(2, semitonsDesdeC4 / 12);
+}
+
+// ============================================================
+// 4. ÁUDIO
+// ============================================================
+let audioCtx = null;
+let fontesAtivas = [];
+let timeoutIds = [];
+let audioAtivo = false;
+
+function getAudioContext() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// Cache do impulso de reverb (criado uma vez)
+let reverbImpulse = null;
+function getReverbImpulse(ctx) {
+  if (reverbImpulse) return reverbImpulse;
+  const dur = 1.8;
+  const len = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+    }
+  }
+  reverbImpulse = buf;
+  return buf;
+}
+
+function tocarNota(freq, quando, duracao) {
+  const ctx = getAudioContext();
+  const agora = ctx.currentTime + quando;
+
+  // ---- Cadeia de saída: ganho -> reverb (paralelo) -> destino ----
+  const ganhoMestre = ctx.createGain();
+  const reverb = ctx.createConvolver();
+  reverb.buffer = getReverbImpulse(ctx);
+  const wet = ctx.createGain();
+  wet.gain.value = 0.28;               // quantidade de reverb
+  const dry = ctx.createGain();
+  dry.gain.value = 1.0;
+
+  ganhoMestre.connect(dry); dry.connect(ctx.destination);
+  ganhoMestre.connect(reverb); reverb.connect(wet); wet.connect(ctx.destination);
+
+  // ---- Envelope de órgão: ataque suave, sustain plano, release curto ----
+  const ataque = 0.06;                 // 60 ms de ataque
+  const release = 0.18;                // 180 ms de release
+  const pico = 0.18;
+  const fimSustain = agora + Math.max(duracao - release, ataque);
+
+  ganhoMestre.gain.setValueAtTime(0, agora);
+  ganhoMestre.gain.linearRampToValueAtTime(pico, agora + ataque);
+  ganhoMestre.gain.setValueAtTime(pico, fimSustain);
+  ganhoMestre.gain.linearRampToValueAtTime(0.0001, agora + duracao);
+
+  // ---- Harmônicos típicos de órgão (1, 2, 3, 4, 6, 8) ----
+  const harmonicos = [
+    { mult: 1, ganho: 1.00 },   // 8'  (fundamental)
+    { mult: 2, ganho: 0.55 },   // 4'
+    { mult: 3, ganho: 0.30 },   // 2 2/3'
+    { mult: 4, ganho: 0.22 },   // 2'
+    { mult: 6, ganho: 0.12 },   // 1 1/3'
+    { mult: 8, ganho: 0.08 },   // 1'
+  ];
+
+  // ---- LFO de vibrato (leve) ----
+  const lfo = ctx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = 5.2;           // ~5 Hz
+  const lfoGain = ctx.createGain();
+  lfoGain.gain.value = 1.5;            // ±1.5 Hz de vibrato
+  lfo.connect(lfoGain);
+
+  harmonicos.forEach(h => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq * h.mult, agora);
+
+    // Conecta o vibrato (LFO) na frequência do oscilador
+    lfoGain.connect(osc.frequency);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(h.ganho, agora);
+    osc.connect(g); g.connect(ganhoMestre);
+
+    osc.start(agora);
+    osc.stop(agora + duracao + 0.1);
+    fontesAtivas.push(osc);
+  });
+
+  lfo.start(agora);
+  lfo.stop(agora + duracao + 0.1);
+  fontesAtivas.push(lfo);
+
+  // ---- Ruído de "chiff" (ataque do ar) bem sutil ----
+  const ruido = ctx.createBufferSource();
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.06, ctx.sampleRate);
+  const dados = buffer.getChannelData(0);
+  for (let i = 0; i < dados.length; i++) {
+    dados[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.012));
+  }
+  ruido.buffer = buffer;
+  const gRuido = ctx.createGain();
+  gRuido.gain.setValueAtTime(0.04, agora);
+  ruido.connect(gRuido); gRuido.connect(ganhoMestre);
+  ruido.start(agora);
+  fontesAtivas.push(ruido);
+}
+
+function pararSom() {
+  timeoutIds.forEach(id => clearTimeout(id));
+  timeoutIds = [];
+  fontesAtivas.forEach(f => { try { f.stop(); } catch(e){} });
+  fontesAtivas = [];
+  audioAtivo = false;
+}
+
+// ============================================================
+// 5. ESTADO
+// ============================================================
+let escalaAtual = null;
+let notaSorteada = null;      // { nota, oitava } — fixa até recalcular/trocar
+let encerrado = false;
+
+const elEscalas = document.getElementById('escalas');
+const elListaNotas = document.getElementById('listaNotas');
+const elPainelSorteio = document.getElementById('painelSorteio');
+const elNotaSorteada = document.getElementById('notaSorteada');
+const btnTocar = document.getElementById('btnTocar');
+const btnRecalcular = document.getElementById('btnRecalcular');
+const btnEncerrar = document.getElementById('btnEncerrar');
+const elEncerrado = document.getElementById('encerrado');
+
+// ============================================================
+// 6. RADIO BUTTONS
+// ============================================================
+function renderizarEscalas() {
+  elEscalas.innerHTML = '';
+  Object.keys(ESCALAS_VETOR).forEach((tom, i) => {
+    const label = document.createElement('label');
+    label.className = 'escala-opcao';
+    label.innerHTML = `
+      <input type="radio" name="escala" value="${tom}" ${i === 0 ? 'checked' : ''}>
+      <span>${NOMES_BONITOS[tom]} maior</span>
+    `;
+    label.querySelector('input').addEventListener('change', () => selecionarEscala(tom));
+    elEscalas.appendChild(label);
+  });
+}
+
+// ============================================================
+// 7. SORTEAR NOTA (fixa) — escolhe uma das 7 notas da escala
+// ============================================================
+function sortearNota(tom) {
+  const seq = ESCALAS_VETOR[tom];
+  const notasUnicas = seq.slice(0, 7); // 7 notas da subida (índices 0..6)
+  const escolhida = notasUnicas[Math.floor(Math.random() * notasUnicas.length)];
+  return { nota: escolhida.nota, oitava: escolhida.oitava };
+}
+
+// ============================================================
+// 8. SELECIONAR ESCALA
+// ============================================================
+function selecionarEscala(tom) {
+  if (encerrado) return;
+  escalaAtual = tom;
+  pararSom();
+
+  document.querySelectorAll('.escala-opcao').forEach(el => {
+    el.classList.toggle('selecionada', el.querySelector('input').checked);
+  });
+
+  renderizarNotas(tom);
+
+  notaSorteada = sortearNota(tom);
+  elNotaSorteada.textContent = notaSorteada.nota;
+  elPainelSorteio.classList.add('visivel');
+
+  btnRecalcular.disabled = false;
+  btnTocar.disabled = false;
+  btnTocar.textContent = '▶ Tocar';
+}
+
+// ============================================================
+// 9. RENDERIZAR NOTAS (subida + descida)
+// ============================================================
+function renderizarNotas(tom) {
+  const seq = ESCALAS_VETOR[tom];
+  elListaNotas.innerHTML = seq.map((item, i) => {
+    let classe = 'nota-chip';
+    if (i === 0) classe += ' tonica';                       // tônica inicial
+    else if (i === 7) classe += ' tonica-alta';             // tônica do topo
+    else if (i === seq.length - 1) classe += ' tonica';     // tônica final
+    if (i > 7 && i < seq.length - 1) classe += ' descida';  // descida
+    return `<span class="${classe}">${item.nota}</span>`;
+  }).join('');
+}
+
+// ============================================================
+// 10. TOCAR ESCALA + NOTA FIXA
+// ============================================================
+function tocarEscalaENota() {
+  if (!escalaAtual || encerrado || !notaSorteada) return;
+  pararSom();
+  audioAtivo = true;
+  btnTocar.textContent = '⏹ Parar';
+
+  const seq = ESCALAS_VETOR[escalaAtual];
+  const DUR_S = 0.9;   // semínima
+  const DUR_C = 0.45;  // colcheia
+
+  let tempo = 0;
+  seq.forEach(item => {
+    const dur = item.dur === 'S' ? DUR_S : DUR_C;
+    const freq = notaParaFrequencia(item.nota, item.oitava);
+    tocarNota(freq, tempo, dur);
+    tempo += dur;
+  });
+
+  // Nota sorteada (usa a oitava em que ela aparece na escala)
+  const pausa = 0.4;
+  const freqSorteada = notaParaFrequencia(notaSorteada.nota, notaSorteada.oitava);
+  const quandoSorteada = tempo + pausa;
+  tocarNota(freqSorteada, quandoSorteada, 1.2);
+
+  const tempoTotal = quandoSorteada + 1.4;
+  timeoutIds.push(setTimeout(() => {
+    audioAtivo = false;
+    btnTocar.textContent = '▶ Tocar';
+  }, tempoTotal * 1000));
+}
+
+// ============================================================
+// 11. RECALCULAR (apenas sorteia e mostra — NÃO toca)
+// ============================================================
+function recalcular() {
+  if (!escalaAtual || encerrado) return;
+  pararSom();
+
+  let nova;
+  let tentativas = 0;
+  do {
+    nova = sortearNota(escalaAtual);
+    tentativas++;
+  } while (notaSorteada && nova.nota === notaSorteada.nota && tentativas < 20);
+
+  notaSorteada = nova;
+  elNotaSorteada.textContent = notaSorteada.nota;
+  elPainelSorteio.classList.add('visivel');
+}
+
+// ============================================================
+// 12. ENCERRAR / REINICIAR
+// ============================================================
+function encerrar() {
+  encerrado = true;
+  pararSom();
+  btnTocar.disabled = true;
+  btnRecalcular.disabled = true;
+  elEncerrado.classList.add('visivel');
+}
+
+function reiniciar() {
+  encerrado = false;
+  escalaAtual = null;
+  notaSorteada = null;
+  pararSom();
+  elEncerrado.classList.remove('visivel');
+  elPainelSorteio.classList.remove('visivel');
+  btnTocar.disabled = false;
+  btnTocar.textContent = '▶ Tocar';
+  btnRecalcular.disabled = true;
+
+  const primeiro = elEscalas.querySelector('input[type="radio"]');
+  if (primeiro) {
+    primeiro.checked = true;
+    selecionarEscala(primeiro.value);
+  }
+}
+
+// ============================================================
+// 13. EVENTOS E INÍCIO
+// ============================================================
+btnTocar.addEventListener('click', () => {
+  if (audioAtivo) {
+    pararSom();
+    btnTocar.textContent = '▶ Tocar';
+    audioAtivo = false;
+    return;
+  }
+  tocarEscalaENota();
+});
+
+btnRecalcular.addEventListener('click', recalcular);
+btnEncerrar.addEventListener('click', encerrar);
+document.getElementById('btnReiniciar').addEventListener('click', reiniciar);
+
+renderizarEscalas();
+selecionarEscala(Object.keys(ESCALAS_VETOR)[0]);
+</script>
+</body>
+</html>
