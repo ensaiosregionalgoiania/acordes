@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz de Acordes Musicais</title>
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.2/build/cjs/vexflow.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #1e1e2f, #2a2a40);
+    color: #f0f0f0;
+    min-height: 100vh;
+    display: flex; justify-content: center; align-items: flex-start;
+    padding: 30px 15px;
+  }
+  .container {
+    background: #2f2f4a; border-radius: 16px; padding: 30px;
+    max-width: 680px; width: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  h1 { text-align: center; font-size: 1.5rem; margin-bottom: 8px; color: #ffd369; }
+  .progresso { font-size: 0.85rem; color: #aaa; margin-bottom: 10px; text-align: right; }
+  .pergunta { font-size: 1.1rem; margin-bottom: 12px; line-height: 1.4; }
+  .pergunta strong { color: #ffd369; }
+  #partitura {
+    background: #fff; border-radius: 10px; padding: 6px;
+    margin-bottom: 12px; display: flex; flex-direction: column;
+    justify-content: center; align-items: center; min-height: 150px;
+  }
+  #partitura svg { max-width: 100%; height: auto; }
+  #legendaNotas {
+    text-align: center; font-size: 0.95rem; color: #333;
+    margin-top: 6px; font-weight: bold;
+  }
+  .opcoes { display: flex; flex-direction: column; gap: 10px; }
+  .opcao {
+    background: #3d3d5c; border: 2px solid transparent; border-radius: 10px;
+    padding: 12px 16px; cursor: pointer; font-size: 1rem; color: #f0f0f0;
+    text-align: left; transition: all 0.2s; user-select: none;
+  }
+  .opcao:hover:not(.desabilitada) { background: #4a4a6e; border-color: #ffd369; }
+  .opcao.selecionada { border-color: #ffd369; background: #4a4a6e; }
+  .opcao.correta { background: #2e7d32; border-color: #4caf50; }
+  .opcao.errada { background: #b71c1c; border-color: #e53935; }
+  .opcao.desabilitada { cursor: default; opacity: 0.85; }
+
+  .botoes { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+  button {
+    flex: 1; min-width: 80px; padding: 12px; border: none; border-radius: 10px;
+    font-size: 1rem; font-weight: bold; cursor: pointer;
+    transition: background 0.2s, transform 0.1s, opacity 0.2s;
+  }
+  button:active { transform: scale(0.98); }
+  #btnProxima { background: #ffd369; color: #1e1e2f; }
+  #btnProxima:hover:not(:disabled) { background: #ffc107; }
+  #btnProxima:disabled { background: #666; color: #aaa; cursor: not-allowed; }
+  #btnAjudaAcorde { background: #42a5f5; color: #fff; }
+  #btnAjudaAcorde:hover:not(:disabled) { background: #1e88e5; }
+  #btnAjudaAcorde:disabled { background: #4a4a5e; color: #888; cursor: not-allowed; opacity: 0.6; }
+  #btnOuvir { background: #26a69a; color: #fff; }
+  #btnOuvir:hover:not(:disabled) { background: #00897b; }
+  #btnOuvir:disabled { background: #4a4a5e; color: #888; cursor: not-allowed; opacity: 0.6; }
+  #btnEncerrar { background: #e53935; color: #fff; }
+  #btnEncerrar:hover { background: #c62828; }
+
+  .modo-som {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 10px; font-size: 0.85rem; color: #aaa; flex-wrap: wrap;
+  }
+  .modo-som label { cursor: pointer; user-select: none; }
+  .modo-som input[type="radio"] { accent-color: #26a69a; cursor: pointer; }
+
+  #nivel {
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+    gap: 6px 16px; margin-bottom: 18px; padding: 10px 12px;
+    background: #25253d; border-radius: 10px; font-size: 0.9rem; color: #aaa;
+  }
+  #nivel label { cursor: pointer; user-select: none; color: #f0f0f0; }
+  #nivel input[type="radio"] { accent-color: #ffd369; cursor: pointer; margin-right: 4px; }
+
+  #resultados {
+    display: none; margin-top: 20px; background: #25253d;
+    border-radius: 12px; padding: 20px; line-height: 1.6;
+  }
+  #resultados h2 { color: #ffd369; margin-bottom: 12px; font-size: 1.2rem; }
+  #resultados .pontuacao { font-size: 1.4rem; font-weight: bold; margin-bottom: 10px; }
+  #resultados .acertos { color: #4caf50; }
+  #resultados .erros { color: #e53935; }
+  .gabarito { font-size: 0.85rem; color: #bbb; margin-top: 10px; }
+  .gabarito li { margin-bottom: 6px; }
+  .oculto { display: none !important; }
+  #btnReiniciar { background: #42a5f5; color: #fff; }
+  #btnReiniciar:hover { background: #1e88e5; }
+
+  #painelAjudaAcorde {
+    display: none; margin-top: 15px; padding: 14px 16px;
+    border-radius: 10px; background: #1c2c3d;
+    border-left: 6px solid #42a5f5; font-size: 0.95rem; line-height: 1.65;
+  }
+  #painelAjudaAcorde.visivel { display: block; }
+  #painelAjudaAcorde .titulo {
+    color: #42a5f5; font-weight: bold; margin-bottom: 10px; display: block; font-size: 1rem;
+  }
+  #painelAjudaAcorde .passo {
+    margin-bottom: 10px; padding-left: 8px; border-left: 2px solid #2c3e50;
+  }
+  #painelAjudaAcorde .passo .rotulo {
+    display: block; font-size: 0.78rem; text-transform: uppercase;
+    letter-spacing: 0.05em; color: #7fa8cc; margin-bottom: 2px; font-weight: bold;
+  }
+  #painelAjudaAcorde .destaque { color: #ffd369; font-weight: bold; }
+  #painelAjudaAcorde .acidente { color: #e53935; font-weight: bold; }
+  #painelAjudaAcorde .nota { color: #42a5f5; font-weight: bold; }
+  #painelAjudaAcorde .resultado {
+    margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+    background: #253a2e; border-left: 4px solid #4caf50;
+    font-weight: bold; color: #4caf50;
+  }
+
+  #painelFeedback {
+    display: none; margin-top: 15px; padding: 14px 16px;
+    border-radius: 10px; background: #25253d;
+    border-left: 6px solid #ffd369; font-size: 0.95rem; line-height: 1.5;
+  }
+  #painelFeedback.visivel { display: block; }
+  #painelFeedback .verde { color: #4caf50; font-weight: bold; }
+  #painelFeedback .vermelho { color: #e53935; font-weight: bold; }
+  #painelFeedback .titulo { color: #ffd369; font-weight: bold; margin-bottom: 8px; display: block; }
+
+  /* ===== CELULAR ===== */
+  @media (max-width: 600px) {
+    body {
+      height: 100vh; height: 100dvh; min-height: 0;
+      align-items: stretch;
+      padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right))
+               max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    }
+    .container { padding: 8px 10px; display: flex; flex-direction: column; min-height: 0; }
+    h1 { font-size: 1.05rem; margin-bottom: 6px; }
+    #nivel { margin-bottom: 6px; padding: 5px 8px; font-size: 0.78rem; gap: 2px 10px; }
+    #nivel input[type="radio"] { width: 16px; height: 16px; margin-right: 3px; vertical-align: middle; }
+    #areaQuiz { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+    .progresso { font-size: 0.75rem; margin-bottom: 2px; }
+    .pergunta { font-size: 0.85rem; margin-bottom: 4px; }
+    #partitura { padding: 2px; margin-bottom: 6px; min-height: 0; }
+    #partitura svg { width: min(100%, 40vh); width: min(100%, 40dvh); height: auto; }
+    #legendaNotas { font-size: 0.8rem; margin-top: 0; }
+    .opcoes { gap: 6px; }
+    .opcao { padding: 8px 12px; min-height: 40px; font-size: 0.95rem; }
+    #painelFeedback { display: none !important; }
+    #painelAjudaAcorde {
+      flex: 1 1 0; min-height: 60px; overflow-y: auto;
+      margin-top: 6px; padding: 8px 10px; font-size: 0.8rem; line-height: 1.4;
+    }
+    #painelAjudaAcorde .passo { margin-bottom: 6px; }
+    #painelAjudaAcorde .resultado { margin-top: 6px; padding: 6px 10px; }
+    #areaQuiz .botoes {
+      display: grid; grid-template-columns: 1fr 1fr 1.25fr 1fr; gap: 6px;
+      margin-top: auto; padding-top: 8px;
+    }
+    #areaQuiz .botoes button { min-height: 42px; padding: 4px 2px; font-size: 0.78rem; line-height: 1.15; }
+    .modo-som { margin-top: 6px; font-size: 0.75rem; gap: 2px 10px; }
+    .modo-som label { padding: 2px 0; }
+    .modo-som input[type="radio"] { width: 16px; height: 16px; }
+    #resultados { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-top: 8px; }
+    .container:has(#painelAjudaAcorde.visivel) .pergunta,
+    .container:has(#painelAjudaAcorde.visivel) .modo-som { display: none; }
+    .container:has(#painelAjudaAcorde.visivel) #partitura svg { width: min(100%, 30vh); width: min(100%, 30dvh); }
+    .container:has(#painelAjudaAcorde.visivel) .opcao { min-height: 34px; padding: 6px 10px; }
+  }
+  @media (max-width: 600px) and (max-height: 640px) {
+    .pergunta { display: none; }
+    #partitura svg { width: min(100%, 34vh); width: min(100%, 34dvh); }
+    .opcao { min-height: 36px; padding: 6px 10px; font-size: 0.9rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎸 Acordes Musicais</h1>
+  <div id="nivel">
+    <span>Nível:</span>
+    <label><input type="radio" name="modoNivel" value="basico" checked> Básico</label>
+    <label><input type="radio" name="modoNivel" value="intermediario"> Intermediário</label>
+    <label><input type="radio" name="modoNivel" value="avancado"> Avançado</label>
+  </div>
+  <div id="areaQuiz">
+    <div class="progresso" id="progresso"></div>
+    <div class="pergunta" id="pergunta">Qual é a cifra deste acorde?</div>
+    <div id="partitura">
+      <div id="legendaNotas"></div>
+    </div>
+    <div class="opcoes" id="opcoes"></div>
+    <div id="painelAjudaAcorde" aria-live="polite"></div>
+    <div id="painelFeedback" aria-live="polite"></div>
+    <div class="botoes">
+      <button id="btnOuvir">▶ Ouvir</button>
+      <button id="btnAjudaAcorde">💡 Ajuda-me</button>
+      <button id="btnProxima" disabled>Próxima ➡</button>
+      <button id="btnEncerrar">Encerrar</button>
+    </div>
+    <div class="modo-som">
+      <span>Reprodução:</span>
+      <label><input type="radio" name="modoSom" value="harmonico" checked> Harmônico</label>
+      <label><input type="radio" name="modoSom" value="arpejado"> Arpejado</label>
+      <label><input type="radio" name="modoSom" value="ambos"> Ambos</label>
+    </div>
+  </div>
+  <div id="resultados"></div>
+</div>
+<script>
+const PERGUNTAS = [
+  // ===== Tom de C =====
+  { nivel: 1, cifra: "C",   nome: "Dó maior",              notas: ["do4","mi4","sol4"],          opcoes: ["C","Cm","C7","C°"],           correta: 0 },
+  { nivel: 1, cifra: "Dm",  nome: "Ré menor",              notas: ["re4","fa4","la4"],           opcoes: ["D","Dm","D7","D°"],           correta: 1 },
+  { nivel: 1, cifra: "Em",  nome: "Mi menor",              notas: ["mi4","sol4","si4"],          opcoes: ["E","Em","E7","E°"],           correta: 1 },
+  { nivel: 1, cifra: "F",   nome: "Fá maior",              notas: ["fa4","la4","do5"],           opcoes: ["F","Fm","F7","F°"],           correta: 0 },
+  { nivel: 1, cifra: "G",   nome: "Sol maior",             notas: ["sol4","si4","re5"],          opcoes: ["G","Gm","G7","G°"],           correta: 0 },
+  { nivel: 1, cifra: "Am",  nome: "Lá menor",              notas: ["la4","do5","mi5"],           opcoes: ["A","Am","A7","A°"],           correta: 1 },
+  { nivel: 1, cifra: "B°",  nome: "Si diminuto",           notas: ["si4","re5","fa5"],           opcoes: ["B","Bm","B7","B°"],           correta: 3 },
+    // ===== Tom de F =====
+  { nivel: 1, cifra: "F",   nome: "Fá maior",              notas: ["fa4","la4","do5"],           opcoes: ["F","Fm","F7","F°"],           correta: 0 },
+  { nivel: 1, cifra: "Gm",  nome: "Sol menor",             notas: ["sol4","sib4","re5"],         opcoes: ["G","Gm","G7","G°"],           correta: 1 },
+  { nivel: 1, cifra: "Am",  nome: "Lá menor",              notas: ["la4","do5","mi5"],           opcoes: ["A","Am","A7","A°"],           correta: 1 },
+  { nivel: 1, cifra: "Bb",  nome: "Si bemol maior",        notas: ["sib4","re5","fa5"],          opcoes: ["Bb","Bbm","Bb7","Bb°"],       correta: 0 },
+  { nivel: 1, cifra: "C",   nome: "Dó maior",              notas: ["do5","mi5","sol5"],          opcoes: ["C","Cm","C7","C°"],           correta: 0 },
+  { nivel: 1, cifra: "Dm",  nome: "Ré menor",              notas: ["re5","fa5","la5"],           opcoes: ["D","Dm","D7","D°"],           correta: 1 },
+  { nivel: 1, cifra: "E°",  nome: "Mi diminuto",           notas: ["mi5","sol5","sib5"],         opcoes: ["E","Em","E7","E°"],           correta: 3 },
+
+  // ===== Tom de G =====
+  { nivel: 1, cifra: "G",   nome: "Sol maior",             notas: ["sol4","si4","re5"],          opcoes: ["G","Gm","G7","G°"],           correta: 0 },
+  { nivel: 1, cifra: "Am",  nome: "Lá menor",              notas: ["la4","do5","mi5"],           opcoes: ["A","Am","A7","A°"],           correta: 1 },
+  { nivel: 1, cifra: "Bm",  nome: "Si menor",              notas: ["si4","re5","fa#5"],          opcoes: ["B","Bm","B7","B°"],           correta: 1 },
+  { nivel: 1, cifra: "C",   nome: "Dó maior",              notas: ["do5","mi5","sol5"],          opcoes: ["C","Cm","C7","C°"],           correta: 0 },
+  { nivel: 1, cifra: "D",   nome: "Ré maior",              notas: ["re5","fa#5","la5"],          opcoes: ["D","Dm","D7","D°"],           correta: 0 },
+  { nivel: 1, cifra: "Em",  nome: "Mi menor",              notas: ["mi5","sol5","si5"],          opcoes: ["E","Em","E7","E°"],           correta: 1 },
+  { nivel: 1, cifra: "F#°", nome: "Fá sustenido diminuto", notas: ["fa#4","la4","do5"],          opcoes: ["F#","F#m","F#7","F#°"],       correta: 3 },
+
+  // ===== Tom de Bb =====
+  { nivel: 1, cifra: "Bb",  nome: "Si bemol maior",        notas: ["sib4","re5","fa5"],          opcoes: ["Bb","Bbm","Bb7","Bb°"],       correta: 0 },
+  { nivel: 1, cifra: "Cm",  nome: "Dó menor",              notas: ["do5","mib5","sol5"],         opcoes: ["C","Cm","C7","C°"],           correta: 1 },
+  { nivel: 1, cifra: "Dm",  nome: "Ré menor",              notas: ["re5","fa5","la5"],           opcoes: ["D","Dm","D7","D°"],           correta: 1 },
+  { nivel: 1, cifra: "Eb",  nome: "Mi bemol maior",        notas: ["mib5","sol5","sib5"],        opcoes: ["Eb","Ebm","Eb7","Eb°"],       correta: 0 },
+  { nivel: 1, cifra: "F",   nome: "Fá maior",              notas: ["fa5","la5","do6"],           opcoes: ["F","Fm","F7","F°"],           correta: 0 },
+  { nivel: 1, cifra: "Gm",  nome: "Sol menor",             notas: ["sol5","sib5","re6"],         opcoes: ["G","Gm","G7","G°"],           correta: 1 },
+  { nivel: 1, cifra: "A°",  nome: "Lá diminuto",           notas: ["la4","do5","mib5"],          opcoes: ["A","Am","A7","A°"],           correta: 3 },
+
+  // ===== Tom de D =====
+  { nivel: 1, cifra: "D",   nome: "Ré maior",              notas: ["re5","fa#5","la5"],          opcoes: ["D","Dm","D7","D°"],           correta: 0 },
+  { nivel: 1, cifra: "Em",  nome: "Mi menor",              notas: ["mi5","sol5","si5"],          opcoes: ["E","Em","E7","E°"],           correta: 1 },
+  { nivel: 1, cifra: "F#m", nome: "Fá sustenido menor",    notas: ["fa#4","la4","do#5"],         opcoes: ["F#","F#m","F#7","F#°"],       correta: 1 },
+  { nivel: 1, cifra: "G",   nome: "Sol maior",             notas: ["sol4","si4","re5"],          opcoes: ["G","Gm","G7","G°"],           correta: 0 },
+  { nivel: 1, cifra: "A",   nome: "Lá maior",              notas: ["la4","do#5","mi5"],          opcoes: ["A","Am","A7","A°"],           correta: 0 },
+  { nivel: 1, cifra: "Bm",  nome: "Si menor",              notas: ["si4","re5","fa#5"],          opcoes: ["B","Bm","B7","B°"],           correta: 1 },
+  { nivel: 1, cifra: "C#°", nome: "Dó sustenido diminuto", notas: ["do#4","mi4","sol4"],         opcoes: ["C#","C#m","C#7","C#°"],       correta: 3 },
+
+  // ===== Tom de Eb =====
+  { nivel: 1, cifra: "Eb",  nome: "Mi bemol maior",        notas: ["mib5","sol5","sib5"],        opcoes: ["Eb","Ebm","Eb7","Eb°"],       correta: 0 },
+  { nivel: 1, cifra: "Fm",  nome: "Fá menor",              notas: ["fa5","lab5","do6"],          opcoes: ["F","Fm","F7","F°"],           correta: 1 },
+  { nivel: 1, cifra: "Gm",  nome: "Sol menor",             notas: ["sol5","sib5","re6"],         opcoes: ["G","Gm","G7","G°"],           correta: 1 },
+  { nivel: 1, cifra: "Ab",  nome: "Lá bemol maior",        notas: ["lab4","do5","mib5"],         opcoes: ["Ab","Abm","Ab7","Ab°"],       correta: 0 },
+  { nivel: 1, cifra: "Bb",  nome: "Si bemol maior",        notas: ["sib4","re5","fa5"],          opcoes: ["Bb","Bbm","Bb7","Bb°"],       correta: 0 },
+  { nivel: 1, cifra: "Cm",  nome: "Dó menor",              notas: ["do5","mib5","sol5"],         opcoes: ["C","Cm","C7","C°"],           correta: 1 },
+  { nivel: 1, cifra: "D°",  nome: "Ré diminuto",           notas: ["re5","fa5","lab5"],          opcoes: ["D","Dm","D7","D°"],           correta: 3 },
+
+  // ===== Tom de A =====
+  { nivel: 1, cifra: "A",   nome: "Lá maior",              notas: ["la4","do#5","mi5"],          opcoes: ["A","Am","A7","A°"],           correta: 0 },
+  { nivel: 1, cifra: "Bm",  nome: "Si menor",              notas: ["si4","re5","fa#5"],          opcoes: ["B","Bm","B7","B°"],           correta: 1 },
+  { nivel: 1, cifra: "C#m", nome: "Dó sustenido menor",    notas: ["do#4","mi4","sol#4"],        opcoes: ["C#","C#m","C#7","C#°"],       correta: 1 },
+  { nivel: 1, cifra: "D",   nome: "Ré maior",              notas: ["re5","fa#5","la5"],          opcoes: ["D","Dm","D7","D°"],           correta: 0 },
+  { nivel: 1, cifra: "E",   nome: "Mi maior",              notas: ["mi5","sol#5","si5"],         opcoes: ["E","Em","E7","E°"],           correta: 0 },
+  { nivel: 1, cifra: "F#m", nome: "Fá sustenido menor",    notas: ["fa#4","la4","do#5"],         opcoes: ["F#","F#m","F#7","F#°"],       correta: 1 },
+  { nivel: 1, cifra: "G#°", nome: "Sol sustenido diminuto",notas: ["sol#4","si4","re5"],         opcoes: ["G#","G#m","G#7","G#°"],       correta: 3 },
+
+  // ===== Tom de Ab =====
+  { nivel: 1, cifra: "Ab",  nome: "Lá bemol maior",        notas: ["lab4","do5","mib5"],         opcoes: ["Ab","Abm","Ab7","Ab°"],       correta: 0 },
+  { nivel: 1, cifra: "Bbm", nome: "Si bemol menor",        notas: ["sib4","reb5","fa5"],         opcoes: ["Bb","Bbm","Bb7","Bb°"],       correta: 1 },
+  { nivel: 1, cifra: "Cm",  nome: "Dó menor",              notas: ["do5","mib5","sol5"],         opcoes: ["C","Cm","C7","C°"],           correta: 1 },
+  { nivel: 1, cifra: "Db",  nome: "Ré bemol maior",        notas: ["reb5","fa5","lab5"],         opcoes: ["Db","Dbm","Db7","Db°"],       correta: 0 },
+  { nivel: 1, cifra: "Eb",  nome: "Mi bemol maior",        notas: ["mib5","sol5","sib5"],        opcoes: ["Eb","Ebm","Eb7","Eb°"],       correta: 0 },
+  { nivel: 1, cifra: "Fm",  nome: "Fá menor",              notas: ["fa5","lab5","do6"],          opcoes: ["F","Fm","F7","F°"],           correta: 1 },
+  { nivel: 1, cifra: "G°",  nome: "Sol diminuto",          notas: ["sol4","sib4","reb5"],        opcoes: ["G","Gm","G7","G°"],           correta: 3 },
+
+  // ===== Tom de E =====
+  { nivel: 1, cifra: "E",   nome: "Mi maior",              notas: ["mi5","sol#5","si5"],         opcoes: ["E","Em","E7","E°"],           correta: 0 },
+  { nivel: 1, cifra: "F#m", nome: "Fá sustenido menor",    notas: ["fa#4","la4","do#5"],         opcoes: ["F#","F#m","F#7","F#°"],       correta: 1 },
+  { nivel: 1, cifra: "G#m", nome: "Sol sustenido menor",   notas: ["sol#4","si4","re#5"],        opcoes: ["G#","G#m","G#7","G#°"],       correta: 1 },
+  { nivel: 1, cifra: "A",   nome: "Lá maior",              notas: ["la4","do#5","mi5"],          opcoes: ["A","Am","A7","A°"],           correta: 0 },
+  { nivel: 1, cifra: "B",   nome: "Si maior",              notas: ["si4","re#5","fa#5"],         opcoes: ["B","Bm","B7","B°"],           correta: 0 },
+  { nivel: 1, cifra: "C#m", nome: "Dó sustenido menor",    notas: ["do#4","mi4","sol#4"],        opcoes: ["C#","C#m","C#7","C#°"],       correta: 1 },
+  { nivel: 1, cifra: "D#°", nome: "Ré sustenido diminuto", notas: ["re#5","fa#5","la5"],         opcoes: ["D#","D#m","D#7","D#°"],       correta: 3 },
+
+  // ===== Tom de Db =====
+  { nivel: 1, cifra: "Db",  nome: "Ré bemol maior",        notas: ["reb5","fa5","lab5"],         opcoes: ["Db","Dbm","Db7","Db°"],       correta: 0 },
+  { nivel: 1, cifra: "Ebm", nome: "Mi bemol menor",        notas: ["mib5","solb5","sib5"],       opcoes: ["Eb","Ebm","Eb7","Eb°"],       correta: 1 },
+  { nivel: 1, cifra: "Fm",  nome: "Fá menor",              notas: ["fa5","lab5","do6"],          opcoes: ["F","Fm","F7","F°"],           correta: 1 },
+  { nivel: 1, cifra: "Gb",  nome: "Sol bemol maior",       notas: ["solb4","sib4","reb5"],       opcoes: ["Gb","Gbm","Gb7","Gb°"],       correta: 0 },
+  { nivel: 1, cifra: "Ab",  nome: "Lá bemol maior",        notas: ["lab4","do5","mib5"],         opcoes: ["Ab","Abm","Ab7","Ab°"],       correta: 0 },
+  { nivel: 1, cifra: "Bbm", nome: "Si bemol menor",        notas: ["sib4","reb5","fa5"],         opcoes: ["Bb","Bbm","Bb7","Bb°"],       correta: 1 },
+  { nivel: 1, cifra: "C°",  nome: "Dó diminuto",           notas: ["do5","mib5","solb5"],        opcoes: ["C","Cm","C7","C°"],           correta: 3 },
+
+  // ===== Tom de B =====
+  { nivel: 1, cifra: "B",   nome: "Si maior",              notas: ["si4","re#5","fa#5"],         opcoes: ["B","Bm","B7","B°"],           correta: 0 },
+  { nivel: 1, cifra: "C#m", nome: "Dó sustenido menor",    notas: ["do#4","mi4","sol#4"],        opcoes: ["C#","C#m","C#7","C#°"],       correta: 1 },
+  { nivel: 1, cifra: "D#m", nome: "Ré sustenido menor",    notas: ["re#5","fa#5","la#5"],        opcoes: ["D#","D#m","D#7","D#°"],       correta: 1 },
+  { nivel: 1, cifra: "E",   nome: "Mi maior",              notas: ["mi5","sol#5","si5"],         opcoes: ["E","Em","E7","E°"],           correta: 0 },
+  { nivel: 1, cifra: "F#",  nome: "Fá sustenido maior",    notas: ["fa#4","la#4","do#5"],        opcoes: ["F#","F#m","F#7","F#°"],       correta: 0 },
+  { nivel: 1, cifra: "G#m", nome: "Sol sustenido menor",   notas: ["sol#4","si4","re#5"],        opcoes: ["G#","G#m","G#7","G#°"],       correta: 1 },
+  { nivel: 1, cifra: "A#°", nome: "Lá sustenido diminuto", notas: ["la#4","do#5","mi5"],         opcoes: ["A#","A#m","A#7","A#°"],       correta: 3 },
+
+  // ===== Tom de Gb =====
+  { nivel: 1, cifra: "Gb",  nome: "Sol bemol maior",       notas: ["solb4","sib4","reb5"],       opcoes: ["Gb","Gbm","Gb7","Gb°"],       correta: 0 },
+  { nivel: 1, cifra: "Abm", nome: "Lá bemol menor",        notas: ["lab4","dob5","mib5"],        opcoes: ["Ab","Abm","Ab7","Ab°"],       correta: 1 },
+  { nivel: 1, cifra: "Bbm", nome: "Si bemol menor",        notas: ["sib4","reb5","fa5"],         opcoes: ["Bb","Bbm","Bb7","Bb°"],       correta: 1 },
+  { nivel: 1, cifra: "Cb",  nome: "Dó bemol maior",        notas: ["dob5","mib5","solb5"],       opcoes: ["Cb","Cbm","Cb7","Cb°"],       correta: 0 },
+  { nivel: 1, cifra: "Db",  nome: "Ré bemol maior",        notas: ["reb5","fa5","lab5"],         opcoes: ["Db","Dbm","Db7","Db°"],       correta: 0 },
+  { nivel: 1, cifra: "Ebm", nome: "Mi bemol menor",        notas: ["mib5","solb5","sib5"],       opcoes: ["Eb","Ebm","Eb7","Eb°"],       correta: 1 },
+  { nivel: 1, cifra: "F°",  nome: "Fá diminuto",           notas: ["fa5","lab5","dob6"],         opcoes: ["F","Fm","F7","F°"],           correta: 3 },
+
+  // ===== Tom de F# =====
+  { nivel: 1, cifra: "F#",  nome: "Fá sustenido maior",    notas: ["fa#4","la#4","do#5"],        opcoes: ["F#","F#m","F#7","F#°"],       correta: 0 },
+  { nivel: 1, cifra: "G#m", nome: "Sol sustenido menor",   notas: ["sol#4","si4","re#5"],        opcoes: ["G#","G#m","G#7","G#°"],       correta: 1 },
+  { nivel: 1, cifra: "A#m", nome: "Lá sustenido menor",    notas: ["la#4","do#5","mi#5"],        opcoes: ["A#","A#m","A#7","A#°"],       correta: 1 },
+  { nivel: 1, cifra: "B",   nome: "Si maior",              notas: ["si4","re#5","fa#5"],         opcoes: ["B","Bm","B7","B°"],           correta: 0 },
+  { nivel: 1, cifra: "C#",  nome: "Dó sustenido maior",    notas: ["do#5","mi#5","sol#5"],       opcoes: ["C#","C#m","C#7","C#°"],       correta: 0 },
+  { nivel: 1, cifra: "D#m", nome: "Ré sustenido menor",    notas: ["re#5","fa#5","la#5"],        opcoes: ["D#","D#m","D#7","D#°"],       correta: 1 },
+  { nivel: 1, cifra: "E#°", nome: "Mi sustenido diminuto", notas: ["mi#5","sol#5","si5"],        opcoes: ["E#","E#m","E#7","E#°"],       correta: 3 },
+
+  // ===== Tom de Cb =====
+  { nivel: 1, cifra: "Cb",  nome: "Dó bemol maior",        notas: ["dob5","mib5","solb5"],       opcoes: ["Cb","Cbm","Cb7","Cb°"],       correta: 0 },
+  { nivel: 1, cifra: "Dbm", nome: "Ré bemol menor",        notas: ["reb5","fab5","lab5"],        opcoes: ["Db","Dbm","Db7","Db°"],       correta: 1 },
+  { nivel: 1, cifra: "Ebm", nome: "Mi bemol menor",        notas: ["mib5","solb5","sib5"],       opcoes: ["Eb","Ebm","Eb7","Eb°"],       correta: 1 },
+  { nivel: 1, cifra: "Fb",  nome: "Fá bemol maior",        notas: ["fab4","lab4","dob5"],        opcoes: ["Fb","Fbm","Fb7","Fb°"],       correta: 0 },
+  { nivel: 1, cifra: "Gb",  nome: "Sol bemol maior",       notas: ["solb4","sib4","reb5"],       opcoes: ["Gb","Gbm","Gb7","Gb°"],       correta: 0 },
+  { nivel: 1, cifra: "Abm", nome: "Lá bemol menor",        notas: ["lab4","dob5","mib5"],        opcoes: ["Ab","Abm","Ab7","Ab°"],       correta: 1 },
+  { nivel: 1, cifra: "B°",  nome: "Si diminuto",           notas: ["si4","re5","fa5"],           opcoes: ["B","Bm","B7","B°"],           correta: 3 },
+
+  // ===== Tom de C# =====
+  { nivel: 1, cifra: "C#",  nome: "Dó sustenido maior",    notas: ["do#5","mi#5","sol#5"],       opcoes: ["C#","C#m","C#7","C#°"],       correta: 0 },
+  { nivel: 1, cifra: "D#m", nome: "Ré sustenido menor",    notas: ["re#5","fa#5","la#5"],        opcoes: ["D#","D#m","D#7","D#°"],       correta: 1 },
+  { nivel: 1, cifra: "E#m", nome: "Mi sustenido menor",    notas: ["mi#5","sol#5","si#5"],       opcoes: ["E#","E#m","E#7","E#°"],       correta: 1 },
+  { nivel: 1, cifra: "F#",  nome: "Fá sustenido maior",    notas: ["fa#4","la#4","do#5"],        opcoes: ["F#","F#m","F#7","F#°"],       correta: 0 },
+  { nivel: 1, cifra: "G#",  nome: "Sol sustenido maior",   notas: ["sol#4","si#4","re#5"],       opcoes: ["G#","G#m","G#7","G#°"],       correta: 0 },
+  { nivel: 1, cifra: "A#m", nome: "Lá sustenido menor",    notas: ["la#4","do#5","mi#5"],        opcoes: ["A#","A#m","A#7","A#°"],       correta: 1 },
+  { nivel: 1, cifra: "B#°", nome: "Si sustenido diminuto", notas: ["si#4","re#5","fa#5"],        opcoes: ["B#","B#m","B#7","B#°"],       correta: 3 },
+
+  // ===== Tom de C =====
+  { nivel: 2, cifra: "Cmaj7",   nome: "Dó com sétima maior",        notas: ["do4","mi4","sol4","si4"],          opcoes: ["Cmaj7","Cm7","C7","Cm7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "Dm7",     nome: "Ré menor com sétima",        notas: ["re4","fa4","la4","do5"],           opcoes: ["Dmaj7","Dm7","D7","Dm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Em7",     nome: "Mi menor com sétima",        notas: ["mi4","sol4","si4","re5"],          opcoes: ["Emaj7","Em7","E7","Em7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Fmaj7",   nome: "Fá com sétima maior",        notas: ["fa4","la4","do5","mi5"],           opcoes: ["Fmaj7","Fm7","F7","Fm7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "G7",      nome: "Sol dominante com sétima",   notas: ["sol4","si4","re5","fa5"],          opcoes: ["Gmaj7","Gm7","G7","Gm7(b5)"],       correta: 2 },
+  { nivel: 2, cifra: "Am7",     nome: "Lá menor com sétima",        notas: ["la4","do5","mi5","sol5"],          opcoes: ["Amaj7","Am7","A7","Am7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Bm7(b5)", nome: "Si meio-diminuto",           notas: ["si4","re5","fa5","la5"],           opcoes: ["Bmaj7","Bm7","B7","Bm7(b5)"],       correta: 3 },
+
+  // ===== Tom de F =====
+  { nivel: 2, cifra: "Fmaj7",   nome: "Fá com sétima maior",        notas: ["fa4","la4","do5","mi5"],           opcoes: ["Fmaj7","Fm7","F7","Fm7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "Gm7",     nome: "Sol menor com sétima",       notas: ["sol4","sib4","re5","fa5"],         opcoes: ["Gmaj7","Gm7","G7","Gm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Am7",     nome: "Lá menor com sétima",        notas: ["la4","do5","mi5","sol5"],          opcoes: ["Amaj7","Am7","A7","Am7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Bbmaj7",  nome: "Si bemol com sétima maior",  notas: ["sib4","re5","fa5","la5"],          opcoes: ["Bbmaj7","Bbm7","Bb7","Bbm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "C7",      nome: "Dó dominante com sétima",    notas: ["do5","mi5","sol5","sib5"],         opcoes: ["Cmaj7","Cm7","C7","Cm7(b5)"],       correta: 2 },
+  { nivel: 2, cifra: "Dm7",     nome: "Ré menor com sétima",        notas: ["re5","fa5","la5","do6"],           opcoes: ["Dmaj7","Dm7","D7","Dm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Em7(b5)", nome: "Mi meio-diminuto",           notas: ["mi5","sol5","sib5","re6"],         opcoes: ["Emaj7","Em7","E7","Em7(b5)"],       correta: 3 },
+
+  // ===== Tom de G =====
+  { nivel: 2, cifra: "Gmaj7",   nome: "Sol com sétima maior",       notas: ["sol4","si4","re5","fa#5"],         opcoes: ["Gmaj7","Gm7","G7","Gm7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "Am7",     nome: "Lá menor com sétima",        notas: ["la4","do5","mi5","sol5"],          opcoes: ["Amaj7","Am7","A7","Am7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Bm7",     nome: "Si menor com sétima",        notas: ["si4","re5","fa#5","la5"],          opcoes: ["Bmaj7","Bm7","B7","Bm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Cmaj7",   nome: "Dó com sétima maior",        notas: ["do5","mi5","sol5","si5"],          opcoes: ["Cmaj7","Cm7","C7","Cm7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "D7",      nome: "Ré dominante com sétima",    notas: ["re5","fa#5","la5","do6"],          opcoes: ["Dmaj7","Dm7","D7","Dm7(b5)"],       correta: 2 },
+  { nivel: 2, cifra: "Em7",     nome: "Mi menor com sétima",        notas: ["mi5","sol5","si5","re6"],          opcoes: ["Emaj7","Em7","E7","Em7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "F#m7(b5)",nome: "Fá sustenido meio-diminuto", notas: ["fa#4","la4","do5","mi5"],          opcoes: ["F#maj7","F#m7","F#7","F#m7(b5)"],   correta: 3 },
+
+  // ===== Tom de Bb =====
+  { nivel: 2, cifra: "Bbmaj7",  nome: "Si bemol com sétima maior",  notas: ["sib4","re5","fa5","la5"],          opcoes: ["Bbmaj7","Bbm7","Bb7","Bbm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Cm7",     nome: "Dó menor com sétima",        notas: ["do5","mib5","sol5","sib5"],        opcoes: ["Cmaj7","Cm7","C7","Cm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Dm7",     nome: "Ré menor com sétima",        notas: ["re5","fa5","la5","do6"],           opcoes: ["Dmaj7","Dm7","D7","Dm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Ebmaj7",  nome: "Mi bemol com sétima maior",  notas: ["mib5","sol5","sib5","re6"],        opcoes: ["Ebmaj7","Ebm7","Eb7","Ebm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "F7",      nome: "Fá dominante com sétima",    notas: ["fa5","la5","do6","mib6"],          opcoes: ["Fmaj7","Fm7","F7","Fm7(b5)"],       correta: 2 },
+  { nivel: 2, cifra: "Gm7",     nome: "Sol menor com sétima",       notas: ["sol5","sib5","re6","fa6"],         opcoes: ["Gmaj7","Gm7","G7","Gm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Am7(b5)", nome: "Lá meio-diminuto",           notas: ["la4","do5","mib5","sol5"],         opcoes: ["Amaj7","Am7","A7","Am7(b5)"],       correta: 3 },
+
+  // ===== Tom de D =====
+  { nivel: 2, cifra: "Dmaj7",   nome: "Ré com sétima maior",        notas: ["re5","fa#5","la5","do#6"],         opcoes: ["Dmaj7","Dm7","D7","Dm7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "Em7",     nome: "Mi menor com sétima",        notas: ["mi5","sol5","si5","re6"],          opcoes: ["Emaj7","Em7","E7","Em7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "F#m7",    nome: "Fá sustenido menor com sétima",notas: ["fa#4","la4","do#5","mi5"],       opcoes: ["F#maj7","F#m7","F#7","F#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Gmaj7",   nome: "Sol com sétima maior",       notas: ["sol4","si4","re5","fa#5"],         opcoes: ["Gmaj7","Gm7","G7","Gm7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "A7",      nome: "Lá dominante com sétima",    notas: ["la4","do#5","mi5","sol5"],         opcoes: ["Amaj7","Am7","A7","Am7(b5)"],       correta: 2 },
+  { nivel: 2, cifra: "Bm7",     nome: "Si menor com sétima",        notas: ["si4","re5","fa#5","la5"],          opcoes: ["Bmaj7","Bm7","B7","Bm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "C#m7(b5)",nome: "Dó sustenido meio-diminuto", notas: ["do#4","mi4","sol4","si4"],         opcoes: ["C#maj7","C#m7","C#7","C#m7(b5)"],   correta: 3 },
+
+  // ===== Tom de Eb =====
+  { nivel: 2, cifra: "Ebmaj7",  nome: "Mi bemol com sétima maior",  notas: ["mib5","sol5","sib5","re6"],        opcoes: ["Ebmaj7","Ebm7","Eb7","Ebm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Fm7",     nome: "Fá menor com sétima",        notas: ["fa5","lab5","do6","mib6"],         opcoes: ["Fmaj7","Fm7","F7","Fm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Gm7",     nome: "Sol menor com sétima",       notas: ["sol5","sib5","re6","fa6"],         opcoes: ["Gmaj7","Gm7","G7","Gm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Abmaj7",  nome: "Lá bemol com sétima maior",  notas: ["lab4","do5","mib5","sol5"],        opcoes: ["Abmaj7","Abm7","Ab7","Abm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Bb7",     nome: "Si bemol dominante com sétima",notas: ["sib4","re5","fa5","lab5"],       opcoes: ["Bbmaj7","Bbm7","Bb7","Bbm7(b5)"],   correta: 2 },
+  { nivel: 2, cifra: "Cm7",     nome: "Dó menor com sétima",        notas: ["do5","mib5","sol5","sib5"],        opcoes: ["Cmaj7","Cm7","C7","Cm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Dm7(b5)", nome: "Ré meio-diminuto",           notas: ["re5","fa5","lab5","do6"],          opcoes: ["Dmaj7","Dm7","D7","Dm7(b5)"],       correta: 3 },
+
+  // ===== Tom de A =====
+  { nivel: 2, cifra: "Amaj7",   nome: "Lá com sétima maior",        notas: ["la4","do#5","mi5","sol#5"],        opcoes: ["Amaj7","Am7","A7","Am7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "Bm7",     nome: "Si menor com sétima",        notas: ["si4","re5","fa#5","la5"],          opcoes: ["Bmaj7","Bm7","B7","Bm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "C#m7",    nome: "Dó sustenido menor com sétima",notas: ["do#4","mi4","sol#4","si4"],      opcoes: ["C#maj7","C#m7","C#7","C#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Dmaj7",   nome: "Ré com sétima maior",        notas: ["re5","fa#5","la5","do#6"],         opcoes: ["Dmaj7","Dm7","D7","Dm7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "E7",      nome: "Mi dominante com sétima",    notas: ["mi5","sol#5","si5","re6"],         opcoes: ["Emaj7","Em7","E7","Em7(b5)"],       correta: 2 },
+  { nivel: 2, cifra: "F#m7",    nome: "Fá sustenido menor com sétima",notas: ["fa#4","la4","do#5","mi5"],       opcoes: ["F#maj7","F#m7","F#7","F#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "G#m7(b5)",nome: "Sol sustenido meio-diminuto",notas: ["sol#4","si4","re5","fa#5"],        opcoes: ["G#maj7","G#m7","G#7","G#m7(b5)"],   correta: 3 },
+
+  // ===== Tom de Ab =====
+  { nivel: 2, cifra: "Abmaj7",  nome: "Lá bemol com sétima maior",  notas: ["lab4","do5","mib5","sol5"],        opcoes: ["Abmaj7","Abm7","Ab7","Abm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Bbm7",    nome: "Si bemol menor com sétima",  notas: ["sib4","reb5","fa5","lab5"],        opcoes: ["Bbmaj7","Bbm7","Bb7","Bbm7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Cm7",     nome: "Dó menor com sétima",        notas: ["do5","mib5","sol5","sib5"],        opcoes: ["Cmaj7","Cm7","C7","Cm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Dbmaj7",  nome: "Ré bemol com sétima maior",  notas: ["reb5","fa5","lab5","do6"],         opcoes: ["Dbmaj7","Dbm7","Db7","Dbm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Eb7",     nome: "Mi bemol dominante com sétima",notas: ["mib5","sol5","sib5","reb6"],     opcoes: ["Ebmaj7","Ebm7","Eb7","Ebm7(b5)"],   correta: 2 },
+  { nivel: 2, cifra: "Fm7",     nome: "Fá menor com sétima",        notas: ["fa5","lab5","do6","mib6"],         opcoes: ["Fmaj7","Fm7","F7","Fm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Gm7(b5)", nome: "Sol meio-diminuto",          notas: ["sol4","sib4","reb5","fa5"],        opcoes: ["Gmaj7","Gm7","G7","Gm7(b5)"],       correta: 3 },
+
+  // ===== Tom de E =====
+  { nivel: 2, cifra: "Emaj7",   nome: "Mi com sétima maior",        notas: ["mi5","sol#5","si5","re#6"],        opcoes: ["Emaj7","Em7","E7","Em7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "F#m7",    nome: "Fá sustenido menor com sétima",notas: ["fa#4","la4","do#5","mi5"],       opcoes: ["F#maj7","F#m7","F#7","F#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "G#m7",    nome: "Sol sustenido menor com sétima",notas: ["sol#4","si4","re#5","fa#5"],    opcoes: ["G#maj7","G#m7","G#7","G#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Amaj7",   nome: "Lá com sétima maior",        notas: ["la4","do#5","mi5","sol#5"],        opcoes: ["Amaj7","Am7","A7","Am7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "B7",      nome: "Si dominante com sétima",    notas: ["si4","re#5","fa#5","la5"],         opcoes: ["Bmaj7","Bm7","B7","Bm7(b5)"],       correta: 2 },
+  { nivel: 2, cifra: "C#m7",    nome: "Dó sustenido menor com sétima",notas: ["do#4","mi4","sol#4","si4"],      opcoes: ["C#maj7","C#m7","C#7","C#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "D#m7(b5)",nome: "Ré sustenido meio-diminuto", notas: ["re#5","fa#5","la5","do#6"],        opcoes: ["D#maj7","D#m7","D#7","D#m7(b5)"],   correta: 3 },
+
+  // ===== Tom de Db =====
+  { nivel: 2, cifra: "Dbmaj7",  nome: "Ré bemol com sétima maior",  notas: ["reb5","fa5","lab5","do6"],         opcoes: ["Dbmaj7","Dbm7","Db7","Dbm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Ebm7",    nome: "Mi bemol menor com sétima",  notas: ["mib5","solb5","sib5","reb6"],      opcoes: ["Ebmaj7","Ebm7","Eb7","Ebm7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Fm7",     nome: "Fá menor com sétima",        notas: ["fa5","lab5","do6","mib6"],         opcoes: ["Fmaj7","Fm7","F7","Fm7(b5)"],       correta: 1 },
+  { nivel: 2, cifra: "Gbmaj7",  nome: "Sol bemol com sétima maior", notas: ["solb4","sib4","reb5","fa5"],       opcoes: ["Gbmaj7","Gbm7","Gb7","Gbm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Ab7",     nome: "Lá bemol dominante com sétima",notas: ["lab4","do5","mib5","solb5"],     opcoes: ["Abmaj7","Abm7","Ab7","Abm7(b5)"],   correta: 2 },
+  { nivel: 2, cifra: "Bbm7",    nome: "Si bemol menor com sétima",  notas: ["sib4","reb5","fa5","lab5"],        opcoes: ["Bbmaj7","Bbm7","Bb7","Bbm7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Cm7(b5)", nome: "Dó meio-diminuto",           notas: ["do5","mib5","solb5","sib5"],       opcoes: ["Cmaj7","Cm7","C7","Cm7(b5)"],       correta: 3 },
+
+  // ===== Tom de B =====
+  { nivel: 2, cifra: "Bmaj7",   nome: "Si com sétima maior",        notas: ["si4","re#5","fa#5","la#5"],        opcoes: ["Bmaj7","Bm7","B7","Bm7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "C#m7",    nome: "Dó sustenido menor com sétima",notas: ["do#4","mi4","sol#4","si4"],      opcoes: ["C#maj7","C#m7","C#7","C#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "D#m7",    nome: "Ré sustenido menor com sétima",notas: ["re#5","fa#5","la#5","do#6"],     opcoes: ["D#maj7","D#m7","D#7","D#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Emaj7",   nome: "Mi com sétima maior",        notas: ["mi5","sol#5","si5","re#6"],        opcoes: ["Emaj7","Em7","E7","Em7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "F#7",     nome: "Fá sustenido dominante com sétima",notas: ["fa#4","la#4","do#5","mi5"], opcoes: ["F#maj7","F#m7","F#7","F#m7(b5)"],   correta: 2 },
+  { nivel: 2, cifra: "G#m7",    nome: "Sol sustenido menor com sétima",notas: ["sol#4","si4","re#5","fa#5"],    opcoes: ["G#maj7","G#m7","G#7","G#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "A#m7(b5)",nome: "Lá sustenido meio-diminuto", notas: ["la#4","do#5","mi5","sol#5"],       opcoes: ["A#maj7","A#m7","A#7","A#m7(b5)"],   correta: 3 },
+
+  // ===== Tom de Gb =====
+  { nivel: 2, cifra: "Gbmaj7",  nome: "Sol bemol com sétima maior", notas: ["solb4","sib4","reb5","fa5"],       opcoes: ["Gbmaj7","Gbm7","Gb7","Gbm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Abm7",    nome: "Lá bemol menor com sétima",  notas: ["lab4","dob5","mib5","solb5"],      opcoes: ["Abmaj7","Abm7","Ab7","Abm7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Bbm7",    nome: "Si bemol menor com sétima",  notas: ["sib4","reb5","fa5","lab5"],        opcoes: ["Bbmaj7","Bbm7","Bb7","Bbm7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Cbmaj7",  nome: "Dó bemol com sétima maior",  notas: ["dob5","mib5","solb5","sib5"],      opcoes: ["Cbmaj7","Cbm7","Cb7","Cbm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Db7",     nome: "Ré bemol dominante com sétima",notas: ["reb5","fa5","lab5","dob6"],      opcoes: ["Dbmaj7","Dbm7","Db7","Dbm7(b5)"],   correta: 2 },
+  { nivel: 2, cifra: "Ebm7",    nome: "Mi bemol menor com sétima",  notas: ["mib5","solb5","sib5","reb6"],      opcoes: ["Ebmaj7","Ebm7","Eb7","Ebm7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Fm7(b5)", nome: "Fá meio-diminuto",           notas: ["fa5","lab5","dob6","mib6"],        opcoes: ["Fmaj7","Fm7","F7","Fm7(b5)"],       correta: 3 },
+
+  // ===== Tom de F# =====
+  { nivel: 2, cifra: "F#maj7",  nome: "Fá sustenido com sétima maior",notas: ["fa#4","la#4","do#5","mi#5"],     opcoes: ["F#maj7","F#m7","F#7","F#m7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "G#m7",    nome: "Sol sustenido menor com sétima",notas: ["sol#4","si4","re#5","fa#5"],    opcoes: ["G#maj7","G#m7","G#7","G#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "A#m7",    nome: "Lá sustenido menor com sétima",notas: ["la#4","do#5","mi#5","sol#5"],    opcoes: ["A#maj7","A#m7","A#7","A#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Bmaj7",   nome: "Si com sétima maior",        notas: ["si4","re#5","fa#5","la#5"],        opcoes: ["Bmaj7","Bm7","B7","Bm7(b5)"],       correta: 0 },
+  { nivel: 2, cifra: "C#7",     nome: "Dó sustenido dominante com sétima",notas: ["do#5","mi#5","sol#5","si5"],opcoes: ["C#maj7","C#m7","C#7","C#m7(b5)"],   correta: 2 },
+  { nivel: 2, cifra: "D#m7",    nome: "Ré sustenido menor com sétima",notas: ["re#5","fa#5","la#5","do#6"],     opcoes: ["D#maj7","D#m7","D#7","D#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "E#m7(b5)",nome: "Mi sustenido meio-diminuto", notas: ["mi#5","sol#5","si5","re#6"],       opcoes: ["E#maj7","E#m7","E#7","E#m7(b5)"],   correta: 3 },
+
+  // ===== Tom de Cb =====
+  { nivel: 2, cifra: "Cbmaj7",  nome: "Dó bemol com sétima maior",  notas: ["dob5","mib5","solb5","sib5"],      opcoes: ["Cbmaj7","Cbm7","Cb7","Cbm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Dbm7",    nome: "Ré bemol menor com sétima",  notas: ["reb5","fab5","lab5","dob6"],       opcoes: ["Dbmaj7","Dbm7","Db7","Dbm7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Ebm7",    nome: "Mi bemol menor com sétima",  notas: ["mib5","solb5","sib5","reb6"],      opcoes: ["Ebmaj7","Ebm7","Eb7","Ebm7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Fbmaj7",  nome: "Fá bemol com sétima maior",  notas: ["fab4","lab4","dob5","mib5"],       opcoes: ["Fbmaj7","Fbm7","Fb7","Fbm7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "Gb7",     nome: "Sol bemol dominante com sétima",notas: ["solb4","sib4","reb5","fab5"],    opcoes: ["Gbmaj7","Gbm7","Gb7","Gbm7(b5)"],   correta: 2 },
+  { nivel: 2, cifra: "Abm7",    nome: "Lá bemol menor com sétima",  notas: ["lab4","dob5","mib5","solb5"],      opcoes: ["Abmaj7","Abm7","Ab7","Abm7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "Bbm7(b5)",nome: "Si bemol meio-diminuto",     notas: ["sib4","reb5","fab5","lab5"],       opcoes: ["Bbmaj7","Bbm7","Bb7","Bbm7(b5)"],   correta: 3 },
+
+  // ===== Tom de C# =====
+  { nivel: 2, cifra: "C#maj7",  nome: "Dó sustenido com sétima maior",notas: ["do#5","mi#5","sol#5","si#5"],    opcoes: ["C#maj7","C#m7","C#7","C#m7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "D#m7",    nome: "Ré sustenido menor com sétima",notas: ["re#5","fa#5","la#5","do#6"],     opcoes: ["D#maj7","D#m7","D#7","D#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "E#m7",    nome: "Mi sustenido menor com sétima",notas: ["mi#5","sol#5","si#5","re#6"],    opcoes: ["E#maj7","E#m7","E#7","E#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "F#maj7",  nome: "Fá sustenido com sétima maior",notas: ["fa#4","la#4","do#5","mi#5"],     opcoes: ["F#maj7","F#m7","F#7","F#m7(b5)"],   correta: 0 },
+  { nivel: 2, cifra: "G#7",     nome: "Sol sustenido dominante com sétima",notas: ["sol#4","si#4","re#5","fa#5"],opcoes: ["G#maj7","G#m7","G#7","G#m7(b5)"],   correta: 2 },
+  { nivel: 2, cifra: "A#m7",    nome: "Lá sustenido menor com sétima",notas: ["la#4","do#5","mi#5","sol#5"],    opcoes: ["A#maj7","A#m7","A#7","A#m7(b5)"],   correta: 1 },
+  { nivel: 2, cifra: "B#m7(b5)",nome: "Si sustenido meio-diminuto", notas: ["si#4","re#5","fa#5","la#5"],       opcoes: ["B#maj7","B#m7","B#7","B#m7(b5)"],   correta: 3 },
+
+  // ===== Tom de C =====
+  { nivel: 3, cifra: "Cmaj9",   nome: "Dó com sétima maior e nona",  notas: ["do4","mi4","sol4","si4","re5"],   opcoes: ["Cmaj9","Cm9","C9","Cm9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "Dm9",     nome: "Ré menor com sétima e nona",  notas: ["re4","fa4","la4","do5","mi5"],    opcoes: ["Dmaj9","Dm9","D9","Dm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Em9",     nome: "Mi menor com sétima e nona",  notas: ["mi4","sol4","si4","re5","fa#5"],  opcoes: ["Emaj9","Em9","E9","Em9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Fmaj9",   nome: "Fá com sétima maior e nona",  notas: ["fa4","la4","do5","mi5","sol5"],   opcoes: ["Fmaj9","Fm9","F9","Fm9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "G9",      nome: "Sol dominante com nona",      notas: ["sol4","si4","re5","fa5","la5"],   opcoes: ["Gmaj9","Gm9","G9","Gm9(b5)"],       correta: 2 },
+  { nivel: 3, cifra: "Am9",     nome: "Lá menor com sétima e nona",  notas: ["la4","do5","mi5","sol5","si5"],   opcoes: ["Amaj9","Am9","A9","Am9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Bm9(b5)", nome: "Si meio-diminuto com nona",   notas: ["si4","re5","fa5","la5","do#6"],   opcoes: ["Bmaj9","Bm9","B9","Bm9(b5)"],       correta: 3 },
+
+  // ===== Tom de F =====
+  { nivel: 3, cifra: "Fmaj9",   nome: "Fá com sétima maior e nona",  notas: ["fa4","la4","do5","mi5","sol5"],   opcoes: ["Fmaj9","Fm9","F9","Fm9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "Gm9",     nome: "Sol menor com sétima e nona", notas: ["sol4","sib4","re5","fa5","la5"],  opcoes: ["Gmaj9","Gm9","G9","Gm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Am9",     nome: "Lá menor com sétima e nona",  notas: ["la4","do5","mi5","sol5","si5"],   opcoes: ["Amaj9","Am9","A9","Am9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Bbmaj9",  nome: "Si bemol com sétima maior e nona",notas: ["sib4","re5","fa5","la5","do6"],opcoes: ["Bbmaj9","Bbm9","Bb9","Bbm9(b5)"],   correta: 0 },
+  { nivel: 3, cifra: "C9",      nome: "Dó dominante com nona",       notas: ["do5","mi5","sol5","sib5","re6"],  opcoes: ["Cmaj9","Cm9","C9","Cm9(b5)"],       correta: 2 },
+  { nivel: 3, cifra: "Dm9",     nome: "Ré menor com sétima e nona",  notas: ["re5","fa5","la5","do6","mi6"],    opcoes: ["Dmaj9","Dm9","D9","Dm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Em9(b5)", nome: "Mi meio-diminuto com nona",   notas: ["mi5","sol5","sib5","re6","fa#6"], opcoes: ["Emaj9","Em9","E9","Em9(b5)"],       correta: 3 },
+
+  // ===== Tom de G =====
+  { nivel: 3, cifra: "Gmaj9",   nome: "Sol com sétima maior e nona", notas: ["sol4","si4","re5","fa#5","la5"], opcoes: ["Gmaj9","Gm9","G9","Gm9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "Am9",     nome: "Lá menor com sétima e nona",  notas: ["la4","do5","mi5","sol5","si5"],   opcoes: ["Amaj9","Am9","A9","Am9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Bm9",     nome: "Si menor com sétima e nona",  notas: ["si4","re5","fa#5","la5","do#6"],  opcoes: ["Bmaj9","Bm9","B9","Bm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Cmaj9",   nome: "Dó com sétima maior e nona",  notas: ["do5","mi5","sol5","si5","re6"],   opcoes: ["Cmaj9","Cm9","C9","Cm9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "D9",      nome: "Ré dominante com nona",       notas: ["re5","fa#5","la5","do6","mi6"],   opcoes: ["Dmaj9","Dm9","D9","Dm9(b5)"],       correta: 2 },
+  { nivel: 3, cifra: "Em9",     nome: "Mi menor com sétima e nona",  notas: ["mi5","sol5","si5","re6","fa#6"],  opcoes: ["Emaj9","Em9","E9","Em9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "F#m9(b5)",nome: "Fá sustenido meio-diminuto com nona",notas: ["fa#4","la4","do5","mi5","sol#5"],opcoes: ["F#maj9","F#m9","F#9","F#m9(b5)"],correta: 3 },
+
+  // ===== Tom de Bb =====
+  { nivel: 3, cifra: "Bbmaj9",  nome: "Si bemol com sétima maior e nona",notas: ["sib4","re5","fa5","la5","do6"],opcoes: ["Bbmaj9","Bbm9","Bb9","Bbm9(b5)"],  correta: 0 },
+  { nivel: 3, cifra: "Cm9",     nome: "Dó menor com sétima e nona",  notas: ["do5","mib5","sol5","sib5","re6"], opcoes: ["Cmaj9","Cm9","C9","Cm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Dm9",     nome: "Ré menor com sétima e nona",  notas: ["re5","fa5","la5","do6","mi6"],    opcoes: ["Dmaj9","Dm9","D9","Dm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Ebmaj9",  nome: "Mi bemol com sétima maior e nona",notas: ["mib5","sol5","sib5","re6","fa6"],opcoes: ["Ebmaj9","Ebm9","Eb9","Ebm9(b5)"], correta: 0 },
+  { nivel: 3, cifra: "F9",      nome: "Fá dominante com nona",       notas: ["fa5","la5","do6","mib6","sol6"],  opcoes: ["Fmaj9","Fm9","F9","Fm9(b5)"],       correta: 2 },
+  { nivel: 3, cifra: "Gm9",     nome: "Sol menor com sétima e nona", notas: ["sol5","sib5","re6","fa6","la6"],  opcoes: ["Gmaj9","Gm9","G9","Gm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Am9(b5)", nome: "Lá meio-diminuto com nona",   notas: ["la4","do5","mib5","sol5","sib5"], opcoes: ["Amaj9","Am9","A9","Am9(b5)"],       correta: 3 },
+
+  // ===== Tom de D =====
+  { nivel: 3, cifra: "Dmaj9",   nome: "Ré com sétima maior e nona",  notas: ["re5","fa#5","la5","do#6","mi6"],  opcoes: ["Dmaj9","Dm9","D9","Dm9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "Em9",     nome: "Mi menor com sétima e nona",  notas: ["mi5","sol5","si5","re6","fa#6"],  opcoes: ["Emaj9","Em9","E9","Em9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "F#m9",    nome: "Fá sustenido menor com sétima e nona",notas: ["fa#4","la4","do#5","mi5","sol#5"],opcoes: ["F#maj9","F#m9","F#9","F#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "Gmaj9",   nome: "Sol com sétima maior e nona", notas: ["sol4","si4","re5","fa#5","la5"], opcoes: ["Gmaj9","Gm9","G9","Gm9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "A9",      nome: "Lá dominante com nona",       notas: ["la4","do#5","mi5","sol5","si5"],  opcoes: ["Amaj9","Am9","A9","Am9(b5)"],       correta: 2 },
+  { nivel: 3, cifra: "Bm9",     nome: "Si menor com sétima e nona",  notas: ["si4","re5","fa#5","la5","do#6"],  opcoes: ["Bmaj9","Bm9","B9","Bm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "C#m9(b5)",nome: "Dó sustenido meio-diminuto com nona",notas: ["do#4","mi4","sol4","si4","re#5"],opcoes: ["C#maj9","C#m9","C#9","C#m9(b5)"],correta: 3 },
+
+  // ===== Tom de Eb =====
+  { nivel: 3, cifra: "Ebmaj9",  nome: "Mi bemol com sétima maior e nona",notas: ["mib5","sol5","sib5","re6","fa6"],opcoes: ["Ebmaj9","Ebm9","Eb9","Ebm9(b5)"],  correta: 0 },
+  { nivel: 3, cifra: "Fm9",     nome: "Fá menor com sétima e nona",  notas: ["fa5","lab5","do6","mib6","sol6"], opcoes: ["Fmaj9","Fm9","F9","Fm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Gm9",     nome: "Sol menor com sétima e nona", notas: ["sol5","sib5","re6","fa6","la6"],  opcoes: ["Gmaj9","Gm9","G9","Gm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Abmaj9",  nome: "Lá bemol com sétima maior e nona",notas: ["lab4","do5","mib5","sol5","sib5"],opcoes: ["Abmaj9","Abm9","Ab9","Abm9(b5)"], correta: 0 },
+  { nivel: 3, cifra: "Bb9",     nome: "Si bemol dominante com nona", notas: ["sib4","re5","fa5","lab5","do6"], opcoes: ["Bbmaj9","Bbm9","Bb9","Bbm9(b5)"],   correta: 2 },
+  { nivel: 3, cifra: "Cm9",     nome: "Dó menor com sétima e nona",  notas: ["do5","mib5","sol5","sib5","re6"], opcoes: ["Cmaj9","Cm9","C9","Cm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Dm9(b5)", nome: "Ré meio-diminuto com nona",   notas: ["re5","fa5","lab5","do6","mi6"],   opcoes: ["Dmaj9","Dm9","D9","Dm9(b5)"],       correta: 3 },
+
+  // ===== Tom de A =====
+  { nivel: 3, cifra: "Amaj9",   nome: "Lá com sétima maior e nona",  notas: ["la4","do#5","mi5","sol#5","si5"], opcoes: ["Amaj9","Am9","A9","Am9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "Bm9",     nome: "Si menor com sétima e nona",  notas: ["si4","re5","fa#5","la5","do#6"],  opcoes: ["Bmaj9","Bm9","B9","Bm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "C#m9",    nome: "Dó sustenido menor com sétima e nona",notas: ["do#4","mi4","sol#4","si4","re#5"],opcoes: ["C#maj9","C#m9","C#9","C#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "Dmaj9",   nome: "Ré com sétima maior e nona",  notas: ["re5","fa#5","la5","do#6","mi6"],  opcoes: ["Dmaj9","Dm9","D9","Dm9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "E9",      nome: "Mi dominante com nona",       notas: ["mi5","sol#5","si5","re6","fa#6"],  opcoes: ["Emaj9","Em9","E9","Em9(b5)"],       correta: 2 },
+  { nivel: 3, cifra: "F#m9",    nome: "Fá sustenido menor com sétima e nona",notas: ["fa#4","la4","do#5","mi5","sol#5"],opcoes: ["F#maj9","F#m9","F#9","F#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "G#m9(b5)",nome: "Sol sustenido meio-diminuto com nona",notas: ["sol#4","si4","re5","fa#5","la#5"],opcoes: ["G#maj9","G#m9","G#9","G#m9(b5)"],correta: 3 },
+
+  // ===== Tom de Ab =====
+  { nivel: 3, cifra: "Abmaj9",  nome: "Lá bemol com sétima maior e nona",notas: ["lab4","do5","mib5","sol5","sib5"],opcoes: ["Abmaj9","Abm9","Ab9","Abm9(b5)"],  correta: 0 },
+  { nivel: 3, cifra: "Bbm9",    nome: "Si bemol menor com sétima e nona",notas: ["sib4","reb5","fa5","lab5","do6"],opcoes: ["Bbmaj9","Bbm9","Bb9","Bbm9(b5)"],  correta: 1 },
+  { nivel: 3, cifra: "Cm9",     nome: "Dó menor com sétima e nona",  notas: ["do5","mib5","sol5","sib5","re6"], opcoes: ["Cmaj9","Cm9","C9","Cm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Dbmaj9",  nome: "Ré bemol com sétima maior e nona",notas: ["reb5","fa5","lab5","do6","mib6"],opcoes: ["Dbmaj9","Dbm9","Db9","Dbm9(b5)"],  correta: 0 },
+  { nivel: 3, cifra: "Eb9",     nome: "Mi bemol dominante com nona", notas: ["mib5","sol5","sib5","reb6","fa6"],opcoes: ["Ebmaj9","Ebm9","Eb9","Ebm9(b5)"],   correta: 2 },
+  { nivel: 3, cifra: "Fm9",     nome: "Fá menor com sétima e nona",  notas: ["fa5","lab5","do6","mib6","sol6"], opcoes: ["Fmaj9","Fm9","F9","Fm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Gm9(b5)", nome: "Sol meio-diminuto com nona",  notas: ["sol4","sib4","reb5","fa5","la5"], opcoes: ["Gmaj9","Gm9","G9","Gm9(b5)"],       correta: 3 },
+
+  // ===== Tom de E =====
+  { nivel: 3, cifra: "Emaj9",   nome: "Mi com sétima maior e nona",  notas: ["mi5","sol#5","si5","re#6","fa#6"],opcoes: ["Emaj9","Em9","E9","Em9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "F#m9",    nome: "Fá sustenido menor com sétima e nona",notas: ["fa#4","la4","do#5","mi5","sol#5"],opcoes: ["F#maj9","F#m9","F#9","F#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "G#m9",    nome: "Sol sustenido menor com sétima e nona",notas: ["sol#4","si4","re#5","fa#5","la#5"],opcoes: ["G#maj9","G#m9","G#9","G#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "Amaj9",   nome: "Lá com sétima maior e nona",  notas: ["la4","do#5","mi5","sol#5","si5"], opcoes: ["Amaj9","Am9","A9","Am9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "B9",      nome: "Si dominante com nona",       notas: ["si4","re#5","fa#5","la5","do#6"], opcoes: ["Bmaj9","Bm9","B9","Bm9(b5)"],       correta: 2 },
+  { nivel: 3, cifra: "C#m9",    nome: "Dó sustenido menor com sétima e nona",notas: ["do#4","mi4","sol#4","si4","re#5"],opcoes: ["C#maj9","C#m9","C#9","C#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "D#m9(b5)",nome: "Ré sustenido meio-diminuto com nona",notas: ["re#5","fa#5","la5","do#6","mi#6"],opcoes: ["D#maj9","D#m9","D#9","D#m9(b5)"],correta: 3 },
+
+  // ===== Tom de Db =====
+  { nivel: 3, cifra: "Dbmaj9",  nome: "Ré bemol com sétima maior e nona",notas: ["reb5","fa5","lab5","do6","mib6"],opcoes: ["Dbmaj9","Dbm9","Db9","Dbm9(b5)"],  correta: 0 },
+  { nivel: 3, cifra: "Ebm9",    nome: "Mi bemol menor com sétima e nona",notas: ["mib5","solb5","sib5","reb6","fa6"],opcoes: ["Ebmaj9","Ebm9","Eb9","Ebm9(b5)"],  correta: 1 },
+  { nivel: 3, cifra: "Fm9",     nome: "Fá menor com sétima e nona",  notas: ["fa5","lab5","do6","mib6","sol6"], opcoes: ["Fmaj9","Fm9","F9","Fm9(b5)"],       correta: 1 },
+  { nivel: 3, cifra: "Gbmaj9",  nome: "Sol bemol com sétima maior e nona",notas: ["solb4","sib4","reb5","fa5","lab5"],opcoes: ["Gbmaj9","Gbm9","Gb9","Gbm9(b5)"],  correta: 0 },
+  { nivel: 3, cifra: "Ab9",     nome: "Lá bemol dominante com nona", notas: ["lab4","do5","mib5","solb5","sib5"],opcoes: ["Abmaj9","Abm9","Ab9","Abm9(b5)"],   correta: 2 },
+  { nivel: 3, cifra: "Bbm9",    nome: "Si bemol menor com sétima e nona",notas: ["sib4","reb5","fa5","lab5","do6"],opcoes: ["Bbmaj9","Bbm9","Bb9","Bbm9(b5)"],  correta: 1 },
+  { nivel: 3, cifra: "Cm9(b5)", nome: "Dó meio-diminuto com nona",   notas: ["do5","mib5","solb5","sib5","re6"],opcoes: ["Cmaj9","Cm9","C9","Cm9(b5)"],       correta: 3 },
+
+  // ===== Tom de B =====
+  { nivel: 3, cifra: "Bmaj9",   nome: "Si com sétima maior e nona",  notas: ["si4","re#5","fa#5","la#5","do#6"],opcoes: ["Bmaj9","Bm9","B9","Bm9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "C#m9",    nome: "Dó sustenido menor com sétima e nona",notas: ["do#4","mi4","sol#4","si4","re#5"],opcoes: ["C#maj9","C#m9","C#9","C#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "D#m9",    nome: "Ré sustenido menor com sétima e nona",notas: ["re#5","fa#5","la#5","do#6","mi#6"],opcoes: ["D#maj9","D#m9","D#9","D#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "Emaj9",   nome: "Mi com sétima maior e nona",  notas: ["mi5","sol#5","si5","re#6","fa#6"],opcoes: ["Emaj9","Em9","E9","Em9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "F#9",     nome: "Fá sustenido dominante com nona",notas: ["fa#4","la#4","do#5","mi5","sol#5"],opcoes: ["F#maj9","F#m9","F#9","F#m9(b5)"],  correta: 2 },
+  { nivel: 3, cifra: "G#m9",    nome: "Sol sustenido menor com sétima e nona",notas: ["sol#4","si4","re#5","fa#5","la#5"],opcoes: ["G#maj9","G#m9","G#9","G#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "A#m9(b5)",nome: "Lá sustenido meio-diminuto com nona",notas: ["la#4","do#5","mi5","sol#5","si#5"],opcoes: ["A#maj9","A#m9","A#9","A#m9(b5)"],correta: 3 },
+
+  // ===== Tom de Gb =====
+  { nivel: 3, cifra: "Gbmaj9",  nome: "Sol bemol com sétima maior e nona",notas: ["solb4","sib4","reb5","fa5","lab5"],opcoes: ["Gbmaj9","Gbm9","Gb9","Gbm9(b5)"],  correta: 0 },
+  { nivel: 3, cifra: "Abm9",    nome: "Lá bemol menor com sétima e nona",notas: ["lab4","dob5","mib5","solb5","sib5"],opcoes: ["Abmaj9","Abm9","Ab9","Abm9(b5)"],  correta: 1 },
+  { nivel: 3, cifra: "Bbm9",    nome: "Si bemol menor com sétima e nona",notas: ["sib4","reb5","fa5","lab5","do6"],opcoes: ["Bbmaj9","Bbm9","Bb9","Bbm9(b5)"],  correta: 1 },
+  { nivel: 3, cifra: "Cbmaj9",  nome: "Dó bemol com sétima maior e nona",notas: ["dob5","mib5","solb5","sib5","reb6"],opcoes: ["Cbmaj9","Cbm9","Cb9","Cbm9(b5)"],  correta: 0 },
+  { nivel: 3, cifra: "Db9",     nome: "Ré bemol dominante com nona", notas: ["reb5","fa5","lab5","dob6","mib6"],opcoes: ["Dbmaj9","Dbm9","Db9","Dbm9(b5)"],   correta: 2 },
+  { nivel: 3, cifra: "Ebm9",    nome: "Mi bemol menor com sétima e nona",notas: ["mib5","solb5","sib5","reb6","fa6"],opcoes: ["Ebmaj9","Ebm9","Eb9","Ebm9(b5)"],  correta: 1 },
+  { nivel: 3, cifra: "Fm9(b5)", nome: "Fá meio-diminuto com nona",   notas: ["fa5","lab5","dob6","mib6","sol6"],opcoes: ["Fmaj9","Fm9","F9","Fm9(b5)"],       correta: 3 },
+
+  // ===== Tom de F# =====
+  { nivel: 3, cifra: "F#maj9",  nome: "Fá sustenido com sétima maior e nona",notas: ["fa#4","la#4","do#5","mi#5","sol#5"],opcoes: ["F#maj9","F#m9","F#9","F#m9(b5)"],correta: 0 },
+  { nivel: 3, cifra: "G#m9",    nome: "Sol sustenido menor com sétima e nona",notas: ["sol#4","si4","re#5","fa#5","la#5"],opcoes: ["G#maj9","G#m9","G#9","G#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "A#m9",    nome: "Lá sustenido menor com sétima e nona",notas: ["la#4","do#5","mi#5","sol#5","si#5"],opcoes: ["A#maj9","A#m9","A#9","A#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "Bmaj9",   nome: "Si com sétima maior e nona",  notas: ["si4","re#5","fa#5","la#5","do#6"],opcoes: ["Bmaj9","Bm9","B9","Bm9(b5)"],       correta: 0 },
+  { nivel: 3, cifra: "C#9",     nome: "Dó sustenido dominante com nona",notas: ["do#5","mi#5","sol#5","si5","re#6"],opcoes: ["C#maj9","C#m9","C#9","C#m9(b5)"],  correta: 2 },
+  { nivel: 3, cifra: "D#m9",    nome: "Ré sustenido menor com sétima e nona",notas: ["re#5","fa#5","la#5","do#6","mi#6"],opcoes: ["D#maj9","D#m9","D#9","D#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "E#m9(b5)",nome: "Mi sustenido meio-diminuto com nona",notas: ["mi#5","sol#5","si5","re#6","fa#6"],opcoes: ["E#maj9","E#m9","E#9","E#m9(b5)"],correta: 3 },
+
+  // ===== Tom de Cb =====
+  { nivel: 3, cifra: "Cbmaj9",  nome: "Dó bemol com sétima maior e nona",notas: ["dob5","mib5","solb5","sib5","reb6"],opcoes: ["Cbmaj9","Cbm9","Cb9","Cbm9(b5)"],  correta: 0 },
+  { nivel: 3, cifra: "Dbm9",    nome: "Ré bemol menor com sétima e nona",notas: ["reb5","fab5","lab5","dob6","mib6"],opcoes: ["Dbmaj9","Dbm9","Db9","Dbm9(b5)"],  correta: 1 },
+  { nivel: 3, cifra: "Ebm9",    nome: "Mi bemol menor com sétima e nona",notas: ["mib5","solb5","sib5","reb6","fa6"],opcoes: ["Ebmaj9","Ebm9","Eb9","Ebm9(b5)"],  correta: 1 },
+  { nivel: 3, cifra: "Fbmaj9",  nome: "Fá bemol com sétima maior e nona",notas: ["fab4","lab4","dob5","mib5","solb5"],opcoes: ["Fbmaj9","Fbm9","Fb9","Fbm9(b5)"],  correta: 0 },
+  { nivel: 3, cifra: "Gb9",     nome: "Sol bemol dominante com nona",notas: ["solb4","sib4","reb5","fab5","lab5"],opcoes: ["Gbmaj9","Gbm9","Gb9","Gbm9(b5)"],   correta: 2 },
+  { nivel: 3, cifra: "Abm9",    nome: "Lá bemol menor com sétima e nona",notas: ["lab4","dob5","mib5","solb5","sib5"],opcoes: ["Abmaj9","Abm9","Ab9","Abm9(b5)"],  correta: 1 },
+  { nivel: 3, cifra: "Bbm9(b5)",nome: "Si bemol meio-diminuto com nona",notas: ["sib4","reb5","fab5","lab5","do6"],opcoes: ["Bbmaj9","Bbm9","Bb9","Bbm9(b5)"],  correta: 3 },
+
+  // ===== Tom de C# =====
+  { nivel: 3, cifra: "C#maj9",  nome: "Dó sustenido com sétima maior e nona",notas: ["do#5","mi#5","sol#5","si#5","re#6"],opcoes: ["C#maj9","C#m9","C#9","C#m9(b5)"],correta: 0 },
+  { nivel: 3, cifra: "D#m9",    nome: "Ré sustenido menor com sétima e nona",notas: ["re#5","fa#5","la#5","do#6","mi#6"],opcoes: ["D#maj9","D#m9","D#9","D#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "E#m9",    nome: "Mi sustenido menor com sétima e nona",notas: ["mi#5","sol#5","si#5","re#6","fa#6"],opcoes: ["E#maj9","E#m9","E#9","E#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "F#maj9",  nome: "Fá sustenido com sétima maior e nona",notas: ["fa#4","la#4","do#5","mi#5","sol#5"],opcoes: ["F#maj9","F#m9","F#9","F#m9(b5)"],correta: 0 },
+  { nivel: 3, cifra: "G#9",     nome: "Sol sustenido dominante com nona",notas: ["sol#4","si#4","re#5","fa#5","la#5"],opcoes: ["G#maj9","G#m9","G#9","G#m9(b5)"],  correta: 2 },
+  { nivel: 3, cifra: "A#m9",    nome: "Lá sustenido menor com sétima e nona",notas: ["la#4","do#5","mi#5","sol#5","si#5"],opcoes: ["A#maj9","A#m9","A#9","A#m9(b5)"],correta: 1 },
+  { nivel: 3, cifra: "B#m9(b5)",nome: "Si sustenido meio-diminuto com nona",notas: ["si#4","re#5","fa#5","la#5","do#6"],opcoes: ["B#maj9","B#m9","B#9","B#m9(b5)"],correta: 3 }
+];
+
+// ============================================================
+// 1. CONVERSOR DE NOTA (aceita português)
+// ============================================================
+function converterNota(nome) {
+  const mapaLetras = { do:'c', re:'d', mi:'e', fa:'f', sol:'g', la:'a', si:'b' };
+  const mapaBonito = { do:'Dó', re:'Ré', mi:'Mi', fa:'Fá', sol:'Sol', la:'Lá', si:'Si' };
+  const mapaAcidenteBonito = { '#':'♯', 'b':'♭', '##':'𝄪', 'bb':'𝄫' };
+  const match = nome.toLowerCase().match(/^(do|re|mi|fa|sol|la|si)(##|bb|#|b)?(-?\d+)$/);
+  if (!match) throw new Error(`Nota inválida: "${nome}".`);
+  const [, letraPT, acidente, oitavaStr] = match;
+  const oitava = parseInt(oitavaStr, 10);
+  const letra = mapaLetras[letraPT];
+  const vexKey = letra + (acidente || '') + '/' + oitava;
+  const bonito = mapaBonito[letraPT] + (acidente ? mapaAcidenteBonito[acidente] : '') + oitava;
+  return { vexKey, letra, letraPT, oitava, acidente: acidente || null, bonito };
+}
+
+const SEMITONS_LETRA = { c:0, d:2, e:4, f:5, g:7, a:9, b:11 };
+const ACIDENTE_VAL = { '':0, '#':1, 'b':-1, '##':2, 'bb':-2 };
+const FREQ_DO4 = 261.6255653;
+
+// ============================================================
+// 2. UTILITÁRIOS
+// ============================================================
+function embaralhar(array) {
+  const copia = array.slice();
+  for (let i = copia.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copia[i], copia[j]] = [copia[j], copia[i]];
+  }
+  return copia;
+}
+
+// ============================================================
+// 3. ÁUDIO
+// ============================================================
+let audioCtx = null, audioAtivo = false, fontesAtivas = [], timeoutIds = [];
+function notaParaFrequencia(nome) {
+  const n = converterNota(nome);
+  const valorAc = n.acidente ? (ACIDENTE_VAL[n.acidente] || 0) : 0;
+  const semitonsDesdeDo4 = (n.oitava - 4) * 12 + SEMITONS_LETRA[n.letra] + valorAc;
+  return FREQ_DO4 * Math.pow(2, semitonsDesdeDo4 / 12);
+}
+function getAudioContext() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function tocarNota(freq, quando, duracao) {
+  const ctx = getAudioContext();
+  const agora = ctx.currentTime + quando;
+  const ganhoMestre = ctx.createGain();
+  ganhoMestre.connect(ctx.destination);
+  ganhoMestre.gain.setValueAtTime(0, agora);
+  ganhoMestre.gain.linearRampToValueAtTime(0.22, agora + 0.008);
+  ganhoMestre.gain.exponentialRampToValueAtTime(0.0001, agora + duracao);
+  [{m:1,g:1.0},{m:2,g:0.5},{m:3,g:0.25},{m:4,g:0.12},{m:5,g:0.06},{m:6,g:0.03}].forEach(h => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq * h.m, agora);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(h.g, agora);
+    osc.connect(g); g.connect(ganhoMestre);
+    osc.start(agora); osc.stop(agora + duracao + 0.05);
+    fontesAtivas.push(osc);
+  });
+  const ruido = ctx.createBufferSource();
+  const buffer = ctx.createBuffer(1, ctx.sampleRate * 0.02, ctx.sampleRate);
+  const dados = buffer.getChannelData(0);
+  for (let i = 0; i < dados.length; i++) dados[i] = (Math.random()*2-1) * Math.exp(-i/(ctx.sampleRate*0.003));
+  ruido.buffer = buffer;
+  const gRuido = ctx.createGain();
+  gRuido.gain.setValueAtTime(0.06, agora);
+  ruido.connect(gRuido); gRuido.connect(ganhoMestre);
+  ruido.start(agora);
+}
+function pararSom() {
+  timeoutIds.forEach(id => clearTimeout(id));
+  timeoutIds = [];
+  fontesAtivas.forEach(f => { try { f.stop(); } catch(e){} });
+  fontesAtivas = [];
+  audioAtivo = false;
+}
+function tocarAcorde(notas) {
+  if (audioAtivo) { pararSom(); btnOuvir.textContent = '▶ Ouvir'; return; }
+  audioAtivo = true;
+  const modoEl = document.querySelector('input[name="modoSom"]:checked');
+  const modo = modoEl ? modoEl.value : 'harmonico';
+  const freqs = notas.map(notaParaFrequencia);
+  const durNota = 1.4;
+
+  if (modo === 'harmonico') {
+    freqs.forEach(f => tocarNota(f, 0, durNota + 0.4));
+    timeoutIds.push(setTimeout(() => { audioAtivo = false; btnOuvir.textContent = '▶ Ouvir'; }, (durNota + 0.7) * 1000));
+  } else if (modo === 'arpejado') {
+    const gap = 0.35;
+    freqs.forEach((f, i) => tocarNota(f, i * gap, durNota));
+    timeoutIds.push(setTimeout(() => { audioAtivo = false; btnOuvir.textContent = '▶ Ouvir'; }, (freqs.length * gap + durNota + 0.4) * 1000));
+  } else {
+    freqs.forEach(f => tocarNota(f, 0, durNota + 0.4));
+    const inicioArp = durNota + 0.6;
+    const gap = 0.35;
+    freqs.forEach((f, i) => tocarNota(f, inicioArp + i * gap, durNota));
+    timeoutIds.push(setTimeout(() => { audioAtivo = false; btnOuvir.textContent = '▶ Ouvir'; }, (inicioArp + freqs.length * gap + durNota + 0.4) * 1000));
+  }
+
+  btnOuvir.textContent = '⏹ Parar';
+}
+
+// ============================================================
+// 4. PARTITURA
+// ============================================================
+function desenharPartitura(notas) {
+  elPartitura.querySelectorAll('svg').forEach(svg => svg.remove());
+  const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
+  const infos = notas.map(converterNota);
+
+  const renderer = new Renderer(elPartitura, Renderer.Backends.SVG);
+  renderer.resize(340, 220);
+  const context = renderer.getContext();
+  const stave = new Stave(10, 30, 320);
+  stave.addClef('treble');
+  stave.setContext(context).draw();
+
+  const keys = infos.map(n => n.vexKey);
+  const sn = new StaveNote({ keys, duration: 'w', clef: 'treble' });
+  infos.forEach((n, i) => {
+    if (n.acidente === '#')  sn.addModifier(new Accidental('#'), i);
+    if (n.acidente === 'b')  sn.addModifier(new Accidental('b'), i);
+    if (n.acidente === '##') sn.addModifier(new Accidental('##'), i);
+    if (n.acidente === 'bb') sn.addModifier(new Accidental('bb'), i);
+  });
+  const voice = new Voice({ num_beats: 4, beat_value: 4 });
+  voice.addTickables([sn]);
+  new Formatter().joinVoices([voice]).format([voice], 260);
+  voice.draw(context, stave);
+
+  elLegenda.textContent = notas.map(n => converterNota(n).bonito).join('  ·  ');
+}
+
+// ============================================================
+// 5. ANÁLISE (Ajuda-me) — usa os dados do próprio vetor
+// ============================================================
+function gerarAnalise(pergunta) {
+  const nomesBonitos = pergunta.notas.map(n => converterNota(n).bonito).join(' · ');
+  let html = `<span class="titulo">💡 Vamos analisar juntos</span>`;
+  html += `<div class="passo"><span class="rotulo">Notas do acorde</span><span>${nomesBonitos}</span></div>`;
+  html += `<div class="passo"><span class="rotulo">Nome do acorde</span><span><span class="destaque">${pergunta.nome}</span></span></div>`;
+  html += `<div class="passo"><span class="rotulo">Cifra</span><span><span class="nota">${pergunta.cifra}</span></span></div>`;
+  html += `<div class="resultado">✔ Cifra: ${pergunta.cifra}</div>`;
+  return html;
+}
+
+// ============================================================
+// 6. ESTADO E ELEMENTOS
+// ============================================================
+let fila = [], indiceAtual = 0, respostas = [], quizEncerrado = false;
+let ajudaUsada = false, respondida = false;
+
+const elProgresso = document.getElementById('progresso');
+const elPartitura = document.getElementById('partitura');
+const elLegenda = document.getElementById('legendaNotas');
+const elOpcoes = document.getElementById('opcoes');
+const btnProxima = document.getElementById('btnProxima');
+const btnEncerrar = document.getElementById('btnEncerrar');
+const btnAjuda = document.getElementById('btnAjudaAcorde');
+const btnOuvir = document.getElementById('btnOuvir');
+const elResultados = document.getElementById('resultados');
+const elPainelAjuda = document.getElementById('painelAjudaAcorde');
+const elPainelFeedback = document.getElementById('painelFeedback');
+const areaQuiz = document.getElementById('areaQuiz');
+
+function nivelDe(p) { return Number(p.nivel) || 1; }
+function modoSelecionado() {
+  const el = document.querySelector('input[name="modoNivel"]:checked');
+  return el ? el.value : 'basico';
+}
+
+function montarFila() {
+  const modo = modoSelecionado();
+
+  // Básico: sequencial por nível (1 → 2 → 3), ordem original dentro de cada nível
+  if (modo === 'basico') {
+    const n1 = PERGUNTAS.filter(p => p.nivel === 1);
+    const n2 = PERGUNTAS.filter(p => p.nivel === 2);
+    const n3 = PERGUNTAS.filter(p => p.nivel === 3);
+    return [...n1, ...n2, ...n3];
+  }
+
+  // Intermediário: aleatório dentro de cada nível, mas níveis em ordem (1 → 2 → 3)
+  if (modo === 'intermediario') {
+    const n1 = embaralhar(PERGUNTAS.filter(p => p.nivel === 1));
+    const n2 = embaralhar(PERGUNTAS.filter(p => p.nivel === 2));
+    const n3 = embaralhar(PERGUNTAS.filter(p => p.nivel === 3));
+    return [...n1, ...n2, ...n3];
+  }
+
+  // Avançado: tudo embaralhado junto, independentemente do nível
+  return embaralhar(PERGUNTAS);
+}
+
+// ============================================================
+// 7. RENDERIZAR PERGUNTA
+// ============================================================
+function renderizarPergunta() {
+  if (quizEncerrado) return;
+  pararSom(); btnOuvir.textContent = '▶ Ouvir';
+  const p = fila[indiceAtual];
+  respondida = false; ajudaUsada = false;
+  btnAjuda.disabled = false; btnOuvir.disabled = false;
+  elPainelAjuda.classList.remove('visivel'); elPainelAjuda.innerHTML = '';
+  elPainelFeedback.classList.remove('visivel'); elPainelFeedback.innerHTML = '';
+  btnProxima.disabled = true;
+  btnProxima.textContent = (indiceAtual === fila.length - 1) ? 'Finalizar ➡' : 'Próxima ➡';
+  elProgresso.textContent = `Pergunta ${indiceAtual + 1} de ${fila.length} · Nível ${nivelDe(p)}`;
+  try { desenharPartitura(p.notas); } catch (e) { elLegenda.textContent = e.message; }
+
+  elOpcoes.innerHTML = '';
+  p.opcoes.forEach((texto, i) => {
+    const div = document.createElement('div');
+    div.className = 'opcao';
+    div.textContent = texto;
+    div.dataset.indice = i;
+    div.addEventListener('click', () => selecionarOpcao(i));
+    elOpcoes.appendChild(div);
+  });
+}
+
+// ============================================================
+// 8. RESPONDER
+// ============================================================
+function selecionarOpcao(i) {
+  if (quizEncerrado || respondida) return;
+  const p = fila[indiceAtual];
+  const acertou = i === p.correta;
+  respondida = true;
+  respostas.push({
+    pergunta: p.notas.map(n => converterNota(n).bonito).join(' · '),
+    escolhida: p.opcoes[i],
+    correta: p.cifra,
+    acertou
+  });
+  document.querySelectorAll('.opcao').forEach(el => {
+    const idx = Number(el.dataset.indice);
+    el.classList.add('desabilitada');
+    if (idx === p.correta) el.classList.add('correta');
+    else if (idx === i) el.classList.add('errada');
+  });
+  elPainelFeedback.innerHTML = `
+    <span class="titulo">${acertou ? '✔ Correto!' : '✘ Incorreto'}</span>
+    <div>Sua resposta: <span class="${acertou ? 'verde' : 'vermelho'}">${p.opcoes[i]}</span></div>
+    ${acertou ? '' : `<div>Resposta correta: <span class="verde">${p.cifra}</span></div>`}
+  `;
+  elPainelFeedback.classList.add('visivel');
+  btnProxima.disabled = false;
+  btnAjuda.disabled = ajudaUsada;
+}
+
+function ajudarAcorde() {
+  if (ajudaUsada || quizEncerrado) return;
+  const p = fila[indiceAtual];
+  elPainelAjuda.innerHTML = gerarAnalise(p);
+  elPainelAjuda.classList.add('visivel');
+  ajudaUsada = true; btnAjuda.disabled = true;
+}
+
+// ============================================================
+// 9. PRÓXIMA / ENCERRAR / REINICIAR
+// ============================================================
+function proxima() {
+  if (!respondida || quizEncerrado) return;
+  if (indiceAtual === fila.length - 1) encerrar();
+  else { indiceAtual++; renderizarPergunta(); }
+}
+function encerrar() {
+  quizEncerrado = true; pararSom();
+  areaQuiz.classList.add('oculto');
+  const total = respostas.length;
+  const acertos = respostas.filter(r => r.acertou).length;
+  const erros = total - acertos;
+  const pct = total ? Math.round((acertos / total) * 100) : 0;
+  let html = `<h2>📊 Resultados</h2>`;
+  html += `<p class="pontuacao">Você acertou <span class="acertos">${acertos}</span> de ${total} (${pct}%)</p>`;
+  html += `<p><span class="acertos">✔ Acertos: ${acertos}</span> &nbsp;|&nbsp; <span class="erros">✘ Erros: ${erros}</span></p>`;
+  html += `<div class="gabarito"><strong>Gabarito:</strong><ul>`;
+  respostas.forEach(r => {
+    const marca = r.acertou ? '✔' : '✘';
+    const cor = r.acertou ? '#4caf50' : '#e53935';
+    html += `<li><span style="color:${cor}">${marca}</span> ${r.pergunta} — Você: <em>${r.escolhida}</em>`;
+    if (!r.acertou) html += ` | Correta: <strong>${r.correta}</strong>`;
+    html += `</li>`;
+  });
+  html += `</ul></div>`;
+  html += `<div class="botoes"><button id="btnReiniciar">🔄 Reiniciar</button></div>`;
+  elResultados.innerHTML = html;
+  elResultados.style.display = 'block';
+  document.getElementById('btnReiniciar').addEventListener('click', reiniciar);
+}
+function reiniciar() {
+  fila = montarFila(); indiceAtual = 0; respostas = [];
+  quizEncerrado = false; respondida = false; ajudaUsada = false;
+  elPainelAjuda.classList.remove('visivel'); elPainelAjuda.innerHTML = '';
+  elPainelFeedback.classList.remove('visivel'); elPainelFeedback.innerHTML = '';
+  elResultados.style.display = 'none';
+  areaQuiz.classList.remove('oculto');
+  renderizarPergunta();
+}
+
+// ============================================================
+// 10. EVENTOS E INÍCIO
+// ============================================================
+btnProxima.addEventListener('click', proxima);
+btnEncerrar.addEventListener('click', encerrar);
+btnAjuda.addEventListener('click', ajudarAcorde);
+btnOuvir.addEventListener('click', () => {
+  const p = fila[indiceAtual];
+  if (p) tocarAcorde(p.notas);
+});
+document.querySelectorAll('input[name="modoNivel"]').forEach(r => r.addEventListener('change', reiniciar));
+
+fila = montarFila();
+renderizarPergunta();
+</script>
+</body>
+</html>
